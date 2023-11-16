@@ -166,7 +166,8 @@ bool ws_uart::initUARTDevice(
   }
 
   // Check which device type we are initializing
-  if (strcmp(msgUARTRequest->device_id, "pms5003") == 0) {
+  if ((strcmp(msgUARTRequest->device_id, "pms5003") == 0) ||
+      (strcmp(msgUARTRequest->device_id, "pm1006") == 0)) {
 // Attempt to initialize PMS5003 driver with either SW or HW UART
 #ifdef USE_SW_UART
     if (!initUARTDevicePM25AQI(_swSerial, msgUARTRequest->polling_interval))
