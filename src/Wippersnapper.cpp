@@ -2379,7 +2379,7 @@ void Wippersnapper::runNetFSM() {
                   WS_LED_STATUS_WIFI_CONNECTING);
       }
       // Attempt to connect to wireless network
-      maxAttempts = 5;
+      maxAttempts = 10;
       while (maxAttempts > 0) {
         // blink before we connect
         statusLEDBlink(WS_LED_STATUS_WIFI_CONNECTING);

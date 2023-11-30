@@ -261,10 +261,11 @@ protected:
       _status = WS_SSID_INVALID;
     } else {
       _disconnect();
-      delay(100);
-      WiFi.begin(_ssid, _pass);
+      delay(10000); // Wait for WiFi to disconnect
+      WiFi.mode(WIFI_STA); // Optional - set WiFi mode to station mode
+      WiFi.setTimeout(20000); // Set timeout for WiFi.begin() to 20 seconds
+      WiFi.begin(_ssid, _pass); // Attemp to connect to WiFi network
       _status = WS_NET_DISCONNECTED;
-      delay(5000);
     }
   }
 
