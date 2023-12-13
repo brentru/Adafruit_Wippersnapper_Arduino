@@ -874,7 +874,7 @@ void cbSignalI2CReq(char *data, uint16_t len) {
   // WS.msgSignalI2C.cb_payload.funcs.decode = cbDecodeSignalRequestI2C;
 
   // Decode I2C signal request
-  pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
+  // pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
   /*   if (!pb_decode(&istream, wippersnapper_signal_v1_I2CRequest_fields,
                    &WS.msgSignalI2C))
       WS_DEBUG_PRINTLN("ERROR: Unable to decode I2C message"); */
@@ -1054,7 +1054,7 @@ void cbServoMsg(char *data, uint16_t len) {
   //  WS.msgServo.cb_payload.funcs.decode = cbDecodeServoMsg;
 
   // Decode servo message from buffer
-  pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
+  // pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
   /*   if (!pb_decode(&istream, wippersnapper_signal_v1_ServoRequest_fields,
                    &WS.msgServo))
       WS_DEBUG_PRINTLN("ERROR: Unable to decode servo message"); */
@@ -1258,7 +1258,7 @@ void cbPWMMsg(char *data, uint16_t len) {
   //  WS.msgPWM.cb_payload.funcs.decode = cbPWMDecodeMsg;
 
   // Decode servo message from buffer
-  pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
+  // pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
   /*   if (!pb_decode(&istream, wippersnapper_signal_v1_PWMRequest_fields,
                    &WS.msgPWM))
       WS_DEBUG_PRINTLN("ERROR: Unable to decode PWM message"); */
@@ -1346,7 +1346,7 @@ void cbSignalDSReq(char *data, uint16_t len) {
   //  WS.msgSignalDS.cb_payload.funcs.decode = cbDecodeDs18x20Msg;
 
   // Decode DS signal request
-  pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
+  // pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
   /*   if (!pb_decode(&istream, wippersnapper_signal_v1_Ds18x20Request_fields,
                    &WS.msgSignalDS))
       WS_DEBUG_PRINTLN("ERROR: Unable to decode DS message"); */
@@ -1457,7 +1457,7 @@ void cbPixelsMsg(char *data, uint16_t len) {
   //  WS.msgPixels.cb_payload.funcs.decode = cbDecodePixelsMsg;
 
   // Decode pixel message from buffer
-  pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
+  // pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
   /*   if (!pb_decode(&istream, wippersnapper_signal_v1_PixelsRequest_fields,
                    &WS.msgPixels))
       WS_DEBUG_PRINTLN("ERROR: Unable to decode pixel topic message"); */
@@ -1577,7 +1577,7 @@ void cbSignalUARTReq(char *data, uint16_t len) {
   //  WS.msgSignalUART.cb_payload.funcs.decode = cbDecodeUARTMessage;
 
   // Decode DS signal request
-  pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
+  // pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
   /*   if (!pb_decode(&istream, wippersnapper_signal_v1_UARTRequest_fields,
                    &WS.msgSignalUART))
       WS_DEBUG_PRINTLN("ERROR: Unable to decode UART Signal message"); */
@@ -1926,13 +1926,12 @@ bool Wippersnapper::generateWSTopics() {
   // Generate the topic if memory was allocated successfully
   if (WS._topic_signal_device_to_broker != NULL) {
     snprintf(WS._topic_signal_device_to_broker, topicLen,
-             "%s/wprsnpr/%s/signals/"
-             "brokertodevice",
-             WS._username, _device_uid);
+             "%s/wprsnpr/%s/signals/brokertodevice", WS._username, _device_uid);
   } else {
     WS_DEBUG_PRINTLN("ERROR: Failed to allocate devicetobroker signal topic!");
     return false;
   }
+  return true;
 }
 
 /**************************************************************************/
@@ -1959,7 +1958,8 @@ void Wippersnapper::subscribeToTopics() {
   _sub_signal_broker_to_device_topic =
       new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_broker_to_device);
   WS._mqtt->subscribe(_sub_signal_broker_to_device_topic);
-  _sub_signal_broker_to_device_topic->setCallback(cbSignalBrokerToDevice);
+  // TODO: Implement this!
+  // _sub_signal_broker_to_device_topic->setCallback(cbSignalBrokerToDevice);
 }
 
 /**************************************************************************/
