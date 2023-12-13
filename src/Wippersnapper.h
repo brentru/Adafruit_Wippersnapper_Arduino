@@ -91,6 +91,8 @@
   { WS_PRINTER.print(__VA_ARGS__); } ///< Prints debug output.
 #define WS_DEBUG_PRINTLN(...)                                                  \
   { WS_PRINTER.println(__VA_ARGS__); } ///< Prints line from debug output.
+#define WS_DEBUG_PRINTHEX(...)                                                 \
+  { WS_PRINTER.print(__VA_ARGS__, HEX); } ///< Prints debug output.
 #endif
 
 // TODO: re-enable this, i disabled for the time being
@@ -361,11 +363,10 @@ protected:
                                                ACK signal from the device to the
                                                broker after registration */
   char *_topic_device_pin_config_complete =
-      NULL;                        /*!< MQTT topic carrying the ACK signal
-                               from the device to the broker after
-                               hardware configuration */
-  char *_topic_signal_brkr = NULL; /*!< Wprsnpr->Device messages */
-  char *_err_topic = NULL;         /*!< Adafruit IO MQTT error message topic. */
+      NULL;                     /*!< MQTT topic carrying the ACK signal
+                            from the device to the broker after
+                            hardware configuration */
+  char *_err_topic = NULL;      /*!< Adafruit IO MQTT error message topic. */
   char *_throttle_topic = NULL; /*!< Adafruit IO MQTT throttle message topic. */
 
   Adafruit_MQTT_Subscribe *_topic_description_sub; /*!< Subscription callback

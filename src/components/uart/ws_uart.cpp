@@ -129,7 +129,8 @@ bool ws_uart::initUARTDevicePM25AQI(HardwareSerial *hwSerial,
     WS_DEBUG_PRINTLN("[ERROR, UART]: PM25 driver initialization failed!");
     return false;
   }
-  _pm25aqi->set_mqtt_client(WS._mqtt, WS._topic_signal_uart_device);
+  // TODO: Replace this with the new signal 
+  //_pm25aqi->set_mqtt_client(WS._mqtt, WS._topic_signal_uart_device);
   uartDrivers.push_back(_pm25aqi);
   return true;
 }
