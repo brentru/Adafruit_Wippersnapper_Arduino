@@ -41,7 +41,7 @@
 #include "Wippersnapper_Boards.h"
 #include "components/statusLED/Wippersnapper_StatusLED.h"
 
-// Wippersnapper components used by this class 
+// Wippersnapper components used by this class
 #include "components/analogIO/Wippersnapper_AnalogIO.h"
 #include "components/digitalIO/Wippersnapper_DigitalGPIO.h"
 #include "components/i2c/WipperSnapper_I2C.h"
@@ -70,13 +70,17 @@
 #include "provisioning/littlefs/WipperSnapper_LittleFS.h"
 #endif
 
-
 #define WS_VERSION                                                             \
   "1.0.0-beta.76" ///< WipperSnapper app. version (semver-formatted)
 
 // MQTT Topics
 #define TOPIC_WS "/wprsnpr/"      ///< WipperSnapper main topic
 #define TOPIC_SIGNALS "/signals/" ///< WipperSnapper/:CID/Signals
+
+// Reserved Adafruit IO MQTT topics
+// TODO: Do we need to keep these?
+#define TOPIC_IO_THROTTLE "/throttle" ///< Adafruit IO Throttle MQTT Topic
+#define TOPIC_IO_ERRORS "/errors"     ///< Adafruit IO Error MQTT Topic
 
 #define WS_DEBUG          ///< Define to enable debugging to serial terminal
 #define WS_PRINTER Serial ///< Where debug messages will be printed
@@ -89,9 +93,10 @@
   { WS_PRINTER.println(__VA_ARGS__); } ///< Prints line from debug output.
 #endif
 
-#ifdef USE_PSRAM
+// TODO: re-enable this, i disabled for the time being
+/* #ifdef USE_PSRAM
 #define malloc(size) psmalloc(size) ///< Allocates memory from PSRAM
-#endif
+#endif */
 
 /** Defines the Adafruit IO connection status */
 typedef enum {

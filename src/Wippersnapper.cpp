@@ -508,12 +508,13 @@ void cbSignalTopic(char *data, uint16_t len) {
   WS.bufSize = len;
 
   // Empty struct for storing the signal message
-  WS._incomingSignalMsg = wippersnapper_signal_v1_CreateSignalRequest_init_zero;
+  // WS._incomingSignalMsg =
+  // wippersnapper_signal_v1_CreateSignalRequest_init_zero;
 
   // Attempt to decode a signal message
-  if (!WS.decodeSignalMsg(&WS._incomingSignalMsg)) {
-    WS_DEBUG_PRINTLN("ERROR: Failed to decode signal message");
-  }
+  /*   if (!WS.decodeSignalMsg(&WS._incomingSignalMsg)) {
+      WS_DEBUG_PRINTLN("ERROR: Failed to decode signal message");
+    } */
 }
 
 /******************************************************************************************/
@@ -528,7 +529,8 @@ void publishI2CResponse(wippersnapper_signal_v1_I2CResponse *msgi2cResponse) {
   pb_get_encoded_size(&msgSz, wippersnapper_signal_v1_I2CResponse_fields,
                       msgi2cResponse);
   WS_DEBUG_PRINT("Publishing Message: I2CResponse...");
-  WS._mqtt->publish(WS._topic_signal_i2c_device, WS._buffer_outgoing, msgSz, 1);
+  // WS._mqtt->publish(WS._topic_signal_i2c_device, WS._buffer_outgoing, msgSz,
+  // 1);
   WS_DEBUG_PRINTLN("Published!");
 }
 
@@ -865,17 +867,17 @@ void cbSignalI2CReq(char *data, uint16_t len) {
   WS.bufSize = len;
 
   // Zero-out existing I2C signal msg.
-  WS.msgSignalI2C = wippersnapper_signal_v1_I2CRequest_init_zero;
+  // WS.msgSignalI2C = wippersnapper_signal_v1_I2CRequest_init_zero;
 
   // Set up the payload callback, which will set up the callbacks for
   // each oneof payload field once the field tag is known
-  WS.msgSignalI2C.cb_payload.funcs.decode = cbDecodeSignalRequestI2C;
+  // WS.msgSignalI2C.cb_payload.funcs.decode = cbDecodeSignalRequestI2C;
 
   // Decode I2C signal request
   pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
-  if (!pb_decode(&istream, wippersnapper_signal_v1_I2CRequest_fields,
-                 &WS.msgSignalI2C))
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode I2C message");
+  /*   if (!pb_decode(&istream, wippersnapper_signal_v1_I2CRequest_fields,
+                   &WS.msgSignalI2C))
+      WS_DEBUG_PRINTLN("ERROR: Unable to decode I2C message"); */
 }
 
 /******************************************************************************************/
@@ -959,8 +961,8 @@ bool cbDecodeServoMsg(pb_istream_t *stream, const pb_field_t *field,
     pb_get_encoded_size(&msgSz, wippersnapper_signal_v1_ServoResponse_fields,
                         &msgServoResp);
     WS_DEBUG_PRINT("-> Servo Attach Response...");
-    WS._mqtt->publish(WS._topic_signal_servo_device, WS._buffer_outgoing, msgSz,
-                      1);
+    // WS._mqtt->publish(WS._topic_signal_servo_device, WS._buffer_outgoing,
+    // msgSz, 1);
     WS_DEBUG_PRINTLN("Published!");
   } else if (field->tag ==
              wippersnapper_signal_v1_ServoRequest_servo_write_tag) {
@@ -1049,13 +1051,13 @@ void cbServoMsg(char *data, uint16_t len) {
 
   // Set up the payload callback, which will set up the callbacks for
   // each oneof payload field once the field tag is known
-  WS.msgServo.cb_payload.funcs.decode = cbDecodeServoMsg;
+  //  WS.msgServo.cb_payload.funcs.decode = cbDecodeServoMsg;
 
   // Decode servo message from buffer
   pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
-  if (!pb_decode(&istream, wippersnapper_signal_v1_ServoRequest_fields,
-                 &WS.msgServo))
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode servo message");
+  /*   if (!pb_decode(&istream, wippersnapper_signal_v1_ServoRequest_fields,
+                   &WS.msgServo))
+      WS_DEBUG_PRINTLN("ERROR: Unable to decode servo message"); */
 }
 
 /******************************************************************************************/
@@ -1125,8 +1127,8 @@ bool cbPWMDecodeMsg(pb_istream_t *stream, const pb_field_t *field, void **arg) {
     pb_get_encoded_size(&msgSz, wippersnapper_signal_v1_PWMResponse_fields,
                         &msgPWMResponse);
     WS_DEBUG_PRINT("PUBLISHING: PWM Attach Response...");
-    WS._mqtt->publish(WS._topic_signal_pwm_device, WS._buffer_outgoing, msgSz,
-                      1);
+    // WS._mqtt->publish(WS._topic_signal_pwm_device, WS._buffer_outgoing,
+    // msgSz, 1);
     WS_DEBUG_PRINTLN("Published!");
 
 #ifdef USE_DISPLAY
@@ -1253,13 +1255,13 @@ void cbPWMMsg(char *data, uint16_t len) {
 
   // Set up the payload callback, which will set up the callbacks for
   // each oneof payload field once the field tag is known
-  WS.msgPWM.cb_payload.funcs.decode = cbPWMDecodeMsg;
+  //  WS.msgPWM.cb_payload.funcs.decode = cbPWMDecodeMsg;
 
   // Decode servo message from buffer
   pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
-  if (!pb_decode(&istream, wippersnapper_signal_v1_PWMRequest_fields,
-                 &WS.msgPWM))
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode PWM message");
+  /*   if (!pb_decode(&istream, wippersnapper_signal_v1_PWMRequest_fields,
+                   &WS.msgPWM))
+      WS_DEBUG_PRINTLN("ERROR: Unable to decode PWM message"); */
 }
 
 /******************************************************************************************/
@@ -1341,13 +1343,13 @@ void cbSignalDSReq(char *data, uint16_t len) {
 
   // Set up the payload callback, which will set up the callbacks for
   // each oneof payload field once the field tag is known
-  WS.msgSignalDS.cb_payload.funcs.decode = cbDecodeDs18x20Msg;
+  //  WS.msgSignalDS.cb_payload.funcs.decode = cbDecodeDs18x20Msg;
 
   // Decode DS signal request
   pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
-  if (!pb_decode(&istream, wippersnapper_signal_v1_Ds18x20Request_fields,
-                 &WS.msgSignalDS))
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode DS message");
+  /*   if (!pb_decode(&istream, wippersnapper_signal_v1_Ds18x20Request_fields,
+                   &WS.msgSignalDS))
+      WS_DEBUG_PRINTLN("ERROR: Unable to decode DS message"); */
 }
 
 /******************************************************************************************/
@@ -1452,13 +1454,13 @@ void cbPixelsMsg(char *data, uint16_t len) {
 
   // Set up the payload callback, which will set up the callbacks for
   // each oneof payload field once the field tag is known
-  WS.msgPixels.cb_payload.funcs.decode = cbDecodePixelsMsg;
+  //  WS.msgPixels.cb_payload.funcs.decode = cbDecodePixelsMsg;
 
   // Decode pixel message from buffer
   pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
-  if (!pb_decode(&istream, wippersnapper_signal_v1_PixelsRequest_fields,
-                 &WS.msgPixels))
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode pixel topic message");
+  /*   if (!pb_decode(&istream, wippersnapper_signal_v1_PixelsRequest_fields,
+                   &WS.msgPixels))
+      WS_DEBUG_PRINTLN("ERROR: Unable to decode pixel topic message"); */
 }
 
 /******************************************************************************************/
@@ -1525,8 +1527,8 @@ bool cbDecodeUARTMessage(pb_istream_t *stream, const pb_field_t *field,
     pb_get_encoded_size(&msgSz, wippersnapper_signal_v1_UARTResponse_fields,
                         &msgUARTResponse);
     WS_DEBUG_PRINT("PUBLISHING: UART Attach Response...");
-    WS._mqtt->publish(WS._topic_signal_uart_device, WS._buffer_outgoing, msgSz,
-                      1);
+    // WS._mqtt->publish(WS._topic_signal_uart_device, WS._buffer_outgoing,
+    // msgSz, 1);
     WS_DEBUG_PRINTLN("Published!");
 
   } else if (field->tag ==
@@ -1572,13 +1574,13 @@ void cbSignalUARTReq(char *data, uint16_t len) {
 
   // Set up the payload callback, which will set up the callbacks for
   // each oneof payload field once the field tag is known
-  WS.msgSignalUART.cb_payload.funcs.decode = cbDecodeUARTMessage;
+  //  WS.msgSignalUART.cb_payload.funcs.decode = cbDecodeUARTMessage;
 
   // Decode DS signal request
   pb_istream_t istream = pb_istream_from_buffer(WS._buffer, WS.bufSize);
-  if (!pb_decode(&istream, wippersnapper_signal_v1_UARTRequest_fields,
-                 &WS.msgSignalUART))
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode UART Signal message");
+  /*   if (!pb_decode(&istream, wippersnapper_signal_v1_UARTRequest_fields,
+                   &WS.msgSignalUART))
+      WS_DEBUG_PRINTLN("ERROR: Unable to decode UART Signal message"); */
 }
 
 /****************************************************************************/
