@@ -36,22 +36,6 @@
 Wippersnapper WS;
 
 Wippersnapper::Wippersnapper() {
-  _mqtt = 0; // MQTT Client object
-
-  // IO creds
-  _username = 0;
-  _key = 0;
-
-  // Reserved MQTT Topics
-  _topic_description = 0;
-  _topic_description_status = 0;
-  _topic_signal_device = 0;
-  _topic_signal_brkr = 0;
-  _err_topic = 0;
-  _throttle_topic = 0;
-  _err_sub = 0;
-  _throttle_sub = 0;
-
   // Init. component classes
   // LEDC (ESP32-ONLY)
 #ifdef ARDUINO_ARCH_ESP32
@@ -81,12 +65,8 @@ Wippersnapper::Wippersnapper() {
 */
 /**************************************************************************/
 Wippersnapper::~Wippersnapper() {
-  // free topics
-  free(_topic_description);
-  free(_topic_signal_device);
-  free(_topic_signal_brkr);
-  free(_err_sub);
-  free(_throttle_sub);
+  // TODO: delete all components and interfaces here to avoid memory leaks on
+  // exit
 }
 
 /**************************************************************************/
@@ -1763,11 +1743,6 @@ bool Wippersnapper::generateWSErrorTopics() {
     return false;
   }
 
-  // Subscribe to error topic
-  _err_sub = new Adafruit_MQTT_Subscribe(WS._mqtt, WS._err_topic);
-  WS._mqtt->subscribe(_err_sub);
-  _err_sub->setCallback(cbErrorTopic);
-
 // dynamically allocate memory for throttle topic
 #ifdef USE_PSRAM
   WS._throttle_topic = (char *)ps_malloc(
@@ -1784,11 +1759,6 @@ bool Wippersnapper::generateWSErrorTopics() {
     WS_DEBUG_PRINTLN("ERROR: Failed to allocate global throttle topic!");
     return false;
   }
-
-  // Subscribe to throttle topic
-  _throttle_sub = new Adafruit_MQTT_Subscribe(WS._mqtt, WS._throttle_topic);
-  WS._mqtt->subscribe(_throttle_sub);
-  _throttle_sub->setCallback(cbThrottleTopic);
 
   return true;
 }
@@ -1855,454 +1825,139 @@ bool Wippersnapper::generateDeviceUID() {
 */
 /**************************************************************************/
 bool Wippersnapper::generateWSTopics() {
-// Create global registration topic
-#ifdef USE_PSRAM
-  WS._topic_description = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr") +
-      strlen(TOPIC_INFO) + strlen("status") + 1);
-#else
-  WS._topic_description =
-      (char *)malloc(sizeof(char) * strlen(WS._username) + strlen("/wprsnpr") +
-                     strlen(TOPIC_INFO) + strlen("status") + 1);
-#endif
+  size_t topicLen; // MQTT topic length
+
+  /*
+    Topic: Global Hardware Registration
+    Description: Sends board info to IO Broker for registration.
+    Format: <username>/wprsnpr/info/status
+  */
+  // Calculate topic size
+  topicLen = strlen(WS._username) + 22;
+  // Allocate memory for topic
+  WS._topic_description = (char *)malloc(topicLen);
+  // Generate the topic if memory was allocated successfully
   if (WS._topic_description != NULL) {
-    strcpy(WS._topic_description, WS._username);
-    strcat(WS._topic_description, "/wprsnpr");
-    strcat(WS._topic_description, TOPIC_INFO);
-    strcat(WS._topic_description, "status");
-  } else { // malloc failed
+    snprintf(WS._topic_description, topicLen, "%s/wprsnpr/info/status",
+             WS._username);
+  } else {
     WS_DEBUG_PRINTLN("ERROR: Failed to allocate registration topic!");
     return false;
   }
 
-// Create registration status topic
-#ifdef USE_PSRAM
-  WS._topic_description_status = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-      strlen(_device_uid) + strlen(TOPIC_INFO) + strlen("status/") +
-      strlen("broker") + 1);
-#else
-  WS._topic_description_status =
-      (char *)malloc(sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-                     strlen(_device_uid) + strlen(TOPIC_INFO) +
-                     strlen("status/") + strlen("broker") + 1);
-#endif
+  /*
+    Topic: Hardware Registration Status
+    Description:
+    Format: <username>/wprsnpr/<device_uid>/info/status/broker
+  */
+  // Calculate topic length
+  topicLen = strlen(WS._username) + strlen(_device_uid) + 29;
+  // Allocate memory for topic
+  WS._topic_description_status = (char *)malloc(topicLen);
+  // Generate the topic if memory was allocated successfully
   if (WS._topic_description_status != NULL) {
-    strcpy(WS._topic_description_status, WS._username);
-    strcat(WS._topic_description_status, "/wprsnpr/");
-    strcat(WS._topic_description_status, _device_uid);
-    strcat(WS._topic_description_status, TOPIC_INFO);
-    strcat(WS._topic_description_status, "status");
-    strcat(WS._topic_description_status, "/broker");
-  } else { // malloc failed
+    snprintf(WS._topic_description_status, topicLen,
+             "%s/wprsnpr/%s/info/status/broker", WS._username, _device_uid);
+  } else {
     WS_DEBUG_PRINTLN("ERROR: Failed to allocate registration status topic!");
     return false;
   }
 
-  // Subscribe to registration status topic
-  _topic_description_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_description_status, 1);
-  WS._mqtt->subscribe(_topic_description_sub);
-  _topic_description_sub->setCallback(cbRegistrationStatus);
-
-// Create registration status complete topic
-#ifdef USE_PSRAM
-  WS._topic_description_status_complete = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-      strlen(_device_uid) + strlen(TOPIC_INFO) + strlen("status") +
-      strlen("/device/complete") + 1);
-#else
-  WS._topic_description_status_complete =
-      (char *)malloc(sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-                     strlen(_device_uid) + strlen(TOPIC_INFO) +
-                     strlen("status") + strlen("/device/complete") + 1);
-#endif
+  /*
+    Topic: Hardware Registration Status Complete
+    Description: Broker sends this message to a device when registration is
+    complete.
+    Format:
+      <username>/wprsnpr/<device_uid>/info/status/device/complete
+  */
+  // Calculate topic length
+  topicLen = strlen(WS._username) + strlen(_device_uid) + 38;
+  // Allocate memory for topic
+  WS._topic_description_status_complete = (char *)malloc(topicLen);
+  // Generate the topic if memory was allocated successfully
   if (WS._topic_description_status_complete != NULL) {
-    strcpy(WS._topic_description_status_complete, WS._username);
-    strcat(WS._topic_description_status_complete, "/wprsnpr/");
-    strcat(WS._topic_description_status_complete, _device_uid);
-    strcat(WS._topic_description_status_complete, TOPIC_INFO);
-    strcat(WS._topic_description_status_complete, "status");
-    strcat(WS._topic_description_status_complete, "/device/complete");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate registration complete topic!");
-    return false;
-  }
-
-// Create device-to-broker signal topic
-#ifdef USE_PSRAM
-  WS._topic_signal_device = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-      strlen(_device_uid) + strlen(TOPIC_SIGNALS) + strlen("device") + 1);
-#else
-  WS._topic_signal_device = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-      strlen(_device_uid) + strlen(TOPIC_SIGNALS) + strlen("device") + 1);
-#endif
-  if (WS._topic_signal_device != NULL) {
-    strcpy(WS._topic_signal_device, WS._username);
-    strcat(WS._topic_signal_device, "/wprsnpr/");
-    strcat(WS._topic_signal_device, _device_uid);
-    strcat(WS._topic_signal_device, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_device, "device");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate d2c signal topic!");
-    return false;
-  }
-
-// Create pin configuration complete topic
-#ifdef USE_PSRAM
-  WS._topic_device_pin_config_complete = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-      strlen(_device_uid) + strlen(TOPIC_SIGNALS) +
-      strlen("device/pinConfigComplete") + 1);
-#else
-  WS._topic_device_pin_config_complete =
-      (char *)malloc(sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-                     strlen(_device_uid) + strlen(TOPIC_SIGNALS) +
-                     strlen("device/pinConfigComplete") + 1);
-#endif
-  if (WS._topic_device_pin_config_complete != NULL) {
-    strcpy(WS._topic_device_pin_config_complete, WS._username);
-    strcat(WS._topic_device_pin_config_complete, "/wprsnpr/");
-    strcat(WS._topic_device_pin_config_complete, _device_uid);
-    strcat(WS._topic_device_pin_config_complete, TOPIC_SIGNALS);
-    strcat(WS._topic_device_pin_config_complete, "device/pinConfigComplete");
-  } else { // malloc failed
+    snprintf(WS._topic_description_status_complete, topicLen,
+             "%s/wprsnpr/%s/info/status/device/complete", WS._username,
+             _device_uid);
+  } else {
     WS_DEBUG_PRINTLN(
-        "ERROR: Failed to allocate pin config complete flag topic!");
+        "ERROR: Failed to allocate registration complete status topic!");
     return false;
   }
 
-// Create broker-to-device signal topic
-#ifdef USE_PSRAM
-  WS._topic_signal_brkr = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-      strlen(_device_uid) + strlen(TOPIC_SIGNALS) + strlen("broker") + 1);
-#else
-  WS._topic_signal_brkr = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/wprsnpr/") +
-      strlen(_device_uid) + strlen(TOPIC_SIGNALS) + strlen("broker") + 1);
-#endif
-  if (WS._topic_signal_brkr != NULL) {
-    strcpy(WS._topic_signal_brkr, WS._username);
-    strcat(WS._topic_signal_brkr, "/wprsnpr/");
-    strcat(WS._topic_signal_brkr, _device_uid);
-    strcat(WS._topic_signal_brkr, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_brkr, "broker");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate c2d signal topic!");
-    return false;
-  }
-
-  // Subscribe to signal topic
-  _topic_signal_brkr_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_brkr, 1);
-  WS._mqtt->subscribe(_topic_signal_brkr_sub);
-  _topic_signal_brkr_sub->setCallback(cbSignalTopic);
-
-// Create device-to-broker i2c signal topic
-#ifdef USE_PSRAM
-  WS._topic_signal_i2c_brkr = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("broker") +
-      strlen(TOPIC_I2C) + 1);
-#else
-  WS._topic_signal_i2c_brkr = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("broker") +
-      strlen(TOPIC_I2C) + 1);
-#endif
-  if (WS._topic_signal_i2c_brkr != NULL) {
-    strcpy(WS._topic_signal_i2c_brkr, WS._username);
-    strcat(WS._topic_signal_i2c_brkr, TOPIC_WS);
-    strcat(WS._topic_signal_i2c_brkr, _device_uid);
-    strcat(WS._topic_signal_i2c_brkr, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_i2c_brkr, "broker");
-    strcat(WS._topic_signal_i2c_brkr, TOPIC_I2C);
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate d2c i2c topic!");
-    return false;
-  }
-
-  // Subscribe to signal's I2C sub-topic
-  _topic_signal_i2c_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_i2c_brkr, 1);
-  WS._mqtt->subscribe(_topic_signal_i2c_sub);
-  _topic_signal_i2c_sub->setCallback(cbSignalI2CReq);
-
-// Create broker-to-device i2c signal topic
-#ifdef USE_PSRAM
-  WS._topic_signal_i2c_device = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("device") +
-      strlen(TOPIC_I2C) + 1);
-#else
-  WS._topic_signal_i2c_device = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("device") +
-      strlen(TOPIC_I2C) + 1);
-#endif
-  if (WS._topic_signal_i2c_device != NULL) {
-    strcpy(WS._topic_signal_i2c_device, WS._username);
-    strcat(WS._topic_signal_i2c_device, TOPIC_WS);
-    strcat(WS._topic_signal_i2c_device, _device_uid);
-    strcat(WS._topic_signal_i2c_device, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_i2c_device, "device");
-    strcat(WS._topic_signal_i2c_device, TOPIC_I2C);
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to c2d i2c topic!");
-    return false;
-  }
-
-// Create device-to-broker ds18x20 topic
-#ifdef USE_PSRAM
-  WS._topic_signal_ds18_brkr = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("broker/") +
-      strlen("ds18x20") + 1);
-#else
-  WS._topic_signal_ds18_brkr = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("broker/") +
-      strlen("ds18x20") + 1);
-#endif
-  if (WS._topic_signal_ds18_brkr != NULL) {
-    strcpy(WS._topic_signal_ds18_brkr, WS._username);
-    strcat(WS._topic_signal_ds18_brkr, TOPIC_WS);
-    strcat(WS._topic_signal_ds18_brkr, _device_uid);
-    strcat(WS._topic_signal_ds18_brkr, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_ds18_brkr, "broker/ds18x20");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate d2c ds18x20 topic!");
-    return false;
-  }
-
-  // Subscribe to signal's ds18x20 sub-topic
-  _topic_signal_ds18_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_ds18_brkr, 1);
-  WS._mqtt->subscribe(_topic_signal_ds18_sub);
-  _topic_signal_ds18_sub->setCallback(cbSignalDSReq);
-
-// Create broker-to-device ds18x20 topic
-#ifdef USE_PSRAM
-  WS._topic_signal_ds18_device = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("device/") +
-      strlen("ds18x20") + 1);
-#else
-  WS._topic_signal_ds18_device = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + +strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) + strlen("device/") +
-      strlen("ds18x20") + 1);
-#endif
-  if (WS._topic_signal_ds18_device != NULL) {
-    strcpy(WS._topic_signal_ds18_device, WS._username);
-    strcat(WS._topic_signal_ds18_device, TOPIC_WS);
-    strcat(WS._topic_signal_ds18_device, _device_uid);
-    strcat(WS._topic_signal_ds18_device, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_ds18_device, "device/ds18x20");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate c2d ds18x20 topic!");
-    return false;
-  }
-
-// Create device-to-broker servo signal topic
-#ifdef USE_PSRAM
-  WS._topic_signal_servo_brkr = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/broker/servo") + 1);
-#else
-  WS._topic_signal_servo_brkr = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/broker/servo") + 1);
-#endif
-  if (WS._topic_signal_servo_brkr != NULL) {
-    strcpy(WS._topic_signal_servo_brkr, WS._username);
-    strcat(WS._topic_signal_servo_brkr, TOPIC_WS);
-    strcat(WS._topic_signal_servo_brkr, _device_uid);
-    strcat(WS._topic_signal_servo_brkr, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_servo_brkr, "broker/servo");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate d2c servo topic!");
-    return false;
-  }
-
-  // Subscribe to servo sub-topic
-  _topic_signal_servo_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_servo_brkr, 1);
-  WS._mqtt->subscribe(_topic_signal_servo_sub);
-  _topic_signal_servo_sub->setCallback(cbServoMsg);
-
-// Create broker-to-device servo signal topic
-#ifdef USE_PSRAM
-  WS._topic_signal_servo_device = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/device/servo") + 1);
-#else
-  WS._topic_signal_servo_device = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/device/servo") + 1);
-#endif
-  if (WS._topic_signal_servo_device != NULL) {
-    strcpy(WS._topic_signal_servo_device, WS._username);
-    strcat(WS._topic_signal_servo_device, TOPIC_WS);
-    strcat(WS._topic_signal_servo_device, _device_uid);
-    strcat(WS._topic_signal_servo_device, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_servo_device, "device/servo");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate c2d servo topic!");
-    return false;
-  }
-
-// Topic for pwm messages from broker->device
-#ifdef USE_PSRAM
-  WS._topic_signal_pwm_brkr = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/broker/pwm") + 1);
-#else
-  WS._topic_signal_pwm_brkr = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/broker/pwm") + 1);
-#endif
-  // Create device-to-broker pwm signal topic
-  if (WS._topic_signal_pwm_brkr != NULL) {
-    strcpy(WS._topic_signal_pwm_brkr, WS._username);
-    strcat(WS._topic_signal_pwm_brkr, TOPIC_WS);
-    strcat(WS._topic_signal_pwm_brkr, _device_uid);
-    strcat(WS._topic_signal_pwm_brkr, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_pwm_brkr, "broker/pwm");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate c2d pwm topic!");
-    return false;
-  }
-
-  // Subscribe to PWM sub-topic
-  _topic_signal_pwm_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_pwm_brkr, 1);
-  WS._mqtt->subscribe(_topic_signal_pwm_sub);
-  _topic_signal_pwm_sub->setCallback(cbPWMMsg);
-
-// Topic for pwm messages from device->broker
-#ifdef USE_PSRAM
-  WS._topic_signal_pwm_device = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/device/pwm") + 1);
-#else
-  WS._topic_signal_pwm_device = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/device/pwm") + 1);
-#endif
-  if (WS._topic_signal_pwm_device != NULL) {
-    strcpy(WS._topic_signal_pwm_device, WS._username);
-    strcat(WS._topic_signal_pwm_device, TOPIC_WS);
-    strcat(WS._topic_signal_pwm_device, _device_uid);
-    strcat(WS._topic_signal_pwm_device, TOPIC_SIGNALS);
-    strcat(WS._topic_signal_pwm_device, "device/pwm");
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate d2c pwm topic!");
-    return false;
-  }
-
-// Topic for pixel messages from broker->device
-#ifdef USE_PSRAM
-  WS._topic_signal_pixels_brkr = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/broker/pixels") + 1);
-#else
-  WS._topic_signal_pixels_brkr = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/broker/pixels") + 1);
-#endif
-  if (WS._topic_signal_pixels_brkr != NULL) {
-    strcpy(WS._topic_signal_pixels_brkr, WS._username);
-    strcat(WS._topic_signal_pixels_brkr, TOPIC_WS);
-    strcat(WS._topic_signal_pixels_brkr, _device_uid);
-    strcat(WS._topic_signal_pixels_brkr, MQTT_TOPIC_PIXELS_BROKER);
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate c2d pixel topic!");
-    return false;
-  }
-
-  // Subscribe to pixels sub-topic
-  _topic_signal_pixels_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_pixels_brkr, 1);
-  WS._mqtt->subscribe(_topic_signal_pixels_sub);
-  _topic_signal_pixels_sub->setCallback(cbPixelsMsg);
-
-// Topic for pixel messages from device->broker
-#ifdef USE_PSRAM
-  WS._topic_signal_pixels_device = (char *)ps_malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/device/pixels") + 1);
-#else
-  WS._topic_signal_pixels_device = (char *)malloc(
-      sizeof(char) * strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-      strlen("/wprsnpr/signals/device/pixels") + 1);
-#endif
-  if (WS._topic_signal_pixels_device != NULL) {
-    strcpy(WS._topic_signal_pixels_device, WS._username);
-    strcat(WS._topic_signal_pixels_device, TOPIC_WS);
-    strcat(WS._topic_signal_pixels_device, _device_uid);
-    strcat(WS._topic_signal_pixels_device, MQTT_TOPIC_PIXELS_DEVICE);
-  } else { // malloc failed
-    WS_DEBUG_PRINTLN("ERROR: Failed to allocate d2c pixels topic!");
-    return false;
-  }
-
-  // Create device-to-broker UART topic
-
-  // Calculate size for dynamic MQTT topic
-  size_t topicLen = strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-                    strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) +
-                    strlen("broker/uart") + 1;
-
-// Allocate memory for dynamic MQTT topic
-#ifdef USE_PSRAM
-  WS._topic_signal_uart_brkr = (char *)ps_malloc(topicLen);
-#else
-  WS._topic_signal_uart_brkr = (char *)malloc(topicLen);
-#endif
-
+  /*
+    Topic: Signal - Broker to Device
+    Description: The BrokerToDevice topic is used for messages sent from the
+    broker to the device. It contains a oneof payload, which is a union of all
+    the possible messages that can be sent from the broker to a device.
+    Format:
+      <username>/wprsnpr/<device_uid>/signals/brokertodevice
+  */
+  // Calculate topic length
+  topicLen = strlen(WS._username) + strlen(_device_uid) + 24;
+  // Allocate memory for topic
+  WS._topic_signal_broker_to_device = (char *)malloc(topicLen);
   // Generate the topic if memory was allocated successfully
-  if (WS._topic_signal_uart_brkr != NULL) {
-    snprintf(WS._topic_signal_uart_brkr, topicLen, "%s/wprsnpr/%s%sbroker/uart",
-             WS._username, _device_uid, TOPIC_SIGNALS);
+  if (WS._topic_signal_broker_to_device != NULL) {
+    snprintf(WS._topic_signal_broker_to_device, topicLen,
+             "%s/wprsnpr/%s/signals/"
+             "brokertodevice",
+             WS._username, _device_uid);
   } else {
-    WS_DEBUG_PRINTLN("FATAL ERROR: Failed to allocate memory for UART topic!");
+    WS_DEBUG_PRINTLN("ERROR: Failed to allocate brokertodevice signal topic!");
     return false;
   }
 
-  // Subscribe to signal's UART sub-topic
-  _topic_signal_uart_sub =
-      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_uart_brkr, 1);
-  WS._mqtt->subscribe(_topic_signal_uart_sub);
-  // Set MQTT callback function
-  _topic_signal_uart_sub->setCallback(cbSignalUARTReq);
-
-  // Create broker-to-device UART topic
-  // Calculate size for dynamic MQTT topic
-  topicLen = strlen(WS._username) + strlen("/") + strlen(_device_uid) +
-             strlen("/wprsnpr/") + strlen(TOPIC_SIGNALS) +
-             strlen("device/uart") + 1;
-
-// Allocate memory for dynamic MQTT topic
-#ifdef USE_PSRAM
-  WS._topic_signal_uart_device = (char *)ps_malloc(topicLen);
-#else
-  WS._topic_signal_uart_device = (char *)malloc(topicLen);
-#endif
-
+  /*
+    Topic: Signal - Device to Broker
+    Description: The DeviceToBroker topic is used for messages sent from the
+    device to the broker. It contains a oneof payload, which is a union of all
+    the possible messages that can be sent from a device to the broker the
+    possible messages that can be sent from the broker to a device.
+    Format:
+      <username>/wprsnpr/<device_uid>/signals/brokertodevice
+  */
+  // Calculate topic length
+  topicLen = strlen(WS._username) + strlen(_device_uid) + 24;
+  // Allocate memory for topic
+  WS._topic_signal_device_to_broker = (char *)malloc(topicLen);
   // Generate the topic if memory was allocated successfully
-  if (WS._topic_signal_uart_device != NULL) {
-    snprintf(WS._topic_signal_uart_device, topicLen,
-             "%s/wprsnpr/%s%sdevice/uart", WS._username, _device_uid,
-             TOPIC_SIGNALS);
+  if (WS._topic_signal_device_to_broker != NULL) {
+    snprintf(WS._topic_signal_device_to_broker, topicLen,
+             "%s/wprsnpr/%s/signals/"
+             "brokertodevice",
+             WS._username, _device_uid);
   } else {
-    WS_DEBUG_PRINTLN("FATAL ERROR: Failed to allocate memory for UART topic!");
+    WS_DEBUG_PRINTLN("ERROR: Failed to allocate devicetobroker signal topic!");
     return false;
   }
-  return true;
+}
+
+/**************************************************************************/
+/*!
+    @brief    Subscribes to previously generated MQTT topics.
+    @returns  True if memory for control topics allocated successfully,
+                False otherwise.
+*/
+/**************************************************************************/
+void Wippersnapper::subscribeToTopics() {
+  // TODO: Can we consolidate to one error topic here?
+  // Subscribe to topic: error
+  _sub_error_topic = new Adafruit_MQTT_Subscribe(WS._mqtt, WS._err_topic);
+  WS._mqtt->subscribe(_sub_error_topic);
+  _sub_error_topic->setCallback(cbErrorTopic);
+
+  // Subscribe to topic: throttle
+  _sub_throttle_topic =
+      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._throttle_topic);
+  WS._mqtt->subscribe(_sub_throttle_topic);
+  _sub_throttle_topic->setCallback(cbThrottleTopic);
+
+  // Subscribe to topic: Signal, Broker to Device
+  _sub_signal_broker_to_device_topic =
+      new Adafruit_MQTT_Subscribe(WS._mqtt, WS._topic_signal_broker_to_device);
+  WS._mqtt->subscribe(_sub_signal_broker_to_device_topic);
+  _sub_signal_broker_to_device_topic->setCallback(cbSignalBrokerToDevice);
 }
 
 /**************************************************************************/

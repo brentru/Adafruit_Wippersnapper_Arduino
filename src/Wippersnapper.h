@@ -27,30 +27,31 @@
 #include <nanopb/pb_encode.h>
 #include <pb.h>
 
+// TODO: Do we want to instead handle these with a wrapper class?
 #include <wippersnapper/description/v1/description.pb.h> // description.proto
 #include <wippersnapper/signal/v1/signal.pb.h>           // signal.proto
 
-// External libraries
+// External libraries used by this class
 #include "Adafruit_MQTT.h"      // MQTT Client
 #include "Adafruit_SleepyDog.h" // Watchdog
 #include "Arduino.h"            // Wiring
 #include <SPI.h>                // SPI
 
-// Wippersnapper API Helpers
+// Wippersnapper API Helpers used by this class
 #include "Wippersnapper_Boards.h"
 #include "components/statusLED/Wippersnapper_StatusLED.h"
 
-// Wippersnapper components
+// Wippersnapper components used by this class 
 #include "components/analogIO/Wippersnapper_AnalogIO.h"
 #include "components/digitalIO/Wippersnapper_DigitalGPIO.h"
 #include "components/i2c/WipperSnapper_I2C.h"
 
-// LEDC-Manager, ESP32-only
+// LEDC-Manager, ESP32-only, used by this class
 #ifdef ARDUINO_ARCH_ESP32
 #include "components/ledc/ws_ledc.h"
 #endif
 
-// Display
+// Display, used by this class
 #ifdef USE_DISPLAY
 #include "display/ws_display_driver.h"
 #include "display/ws_display_ui_helper.h"
@@ -62,30 +63,20 @@
 #include "components/servo/ws_servo.h"
 #include "components/uart/ws_uart.h"
 
+// Filesystem provisioning, used by this class
 #if defined(USE_TINYUSB)
 #include "provisioning/tinyusb/Wippersnapper_FS.h"
-#endif
-
-#if defined(USE_LITTLEFS)
+#elif defined(USE_LITTLEFS)
 #include "provisioning/littlefs/WipperSnapper_LittleFS.h"
 #endif
 
+
 #define WS_VERSION                                                             \
-  "1.0.0-beta.74" ///< WipperSnapper app. version (semver-formatted)
+  "1.0.0-beta.76" ///< WipperSnapper app. version (semver-formatted)
 
-// Reserved Adafruit IO MQTT topics
-#define TOPIC_IO_THROTTLE "/throttle" ///< Adafruit IO Throttle MQTT Topic
-#define TOPIC_IO_ERRORS "/errors"     ///< Adafruit IO Error MQTT Topic
-
-// Reserved Wippersnapper topics
-#define TOPIC_WS "/wprsnpr/"      ///< WipperSnapper topic
-#define TOPIC_INFO "/info/"       ///< Registration sub-topic
-#define TOPIC_SIGNALS "/signals/" ///< Signals sub-topic
-#define TOPIC_I2C "/i2c"          ///< I2C sub-topic
-#define MQTT_TOPIC_PIXELS_DEVICE                                               \
-  "/signals/device/pixel" ///< Pixels device->broker topic
-#define MQTT_TOPIC_PIXELS_BROKER                                               \
-  "/signals/broker/pixel" ///< Pixels broker->device topic
+// MQTT Topics
+#define TOPIC_WS "/wprsnpr/"      ///< WipperSnapper main topic
+#define TOPIC_SIGNALS "/signals/" ///< WipperSnapper/:CID/Signals
 
 #define WS_DEBUG          ///< Define to enable debugging to serial terminal
 #define WS_PRINTER Serial ///< Where debug messages will be printed
@@ -96,13 +87,10 @@
   { WS_PRINTER.print(__VA_ARGS__); } ///< Prints debug output.
 #define WS_DEBUG_PRINTLN(...)                                                  \
   { WS_PRINTER.println(__VA_ARGS__); } ///< Prints line from debug output.
-#define WS_DEBUG_PRINTHEX(...)                                                 \
-  { WS_PRINTER.print(__VA_ARGS__, HEX); } ///< Prints debug output.
-#else
-#define WS_DEBUG_PRINT(...)                                                    \
-  {} ///< Prints debug output
-#define WS_DEBUG_PRINTLN(...)                                                  \
-  {} ///< Prints line from debug output.
+#endif
+
+#ifdef USE_PSRAM
+#define malloc(size) psmalloc(size) ///< Allocates memory from PSRAM
 #endif
 
 /** Defines the Adafruit IO connection status */
@@ -225,6 +213,7 @@ public:
 
   bool generateDeviceUID();
   bool generateWSTopics();
+  void subscribeToTopics();
   bool generateWSErrorTopics();
 
   // Registration API
@@ -320,7 +309,6 @@ public:
   // AIO credentials
   const char *_username = NULL; /*!< Adafruit IO username */
   const char *_key = NULL;      /*!< Adafruit IO key */
-
   // WiFi credentials
   const char *_network_ssid = NULL; /*!< WiFi network SSID */
   const char *_network_pass = NULL; /*!< WiFi network password*/
@@ -329,57 +317,14 @@ public:
   int32_t totalDigitalPins; /*!< Total number of digital-input capable pins */
 
   char *_topic_description = NULL; /*!< MQTT topic for the device description */
-  char *_topic_signal_device = NULL;   /*!< Device->Wprsnpr messages */
-  char *_topic_signal_i2c_brkr = NULL; /*!< Topic carries messages from a device
-                                   to a broker. */
-  char *_topic_signal_i2c_device = NULL;   /*!< Topic carries messages from a
-                                       broker to a device. */
-  char *_topic_signal_servo_brkr = NULL;   /*!< Topic carries messages from a
-                                     device   to a broker. */
-  char *_topic_signal_servo_device = NULL; /*!< Topic carries messages from a
-                                     broker to a device. */
-  char *_topic_signal_pwm_brkr =
-      NULL; /*!< Topic carries PWM messages from a device to a broker. */
-  char *_topic_signal_pwm_device =
-      NULL; /*!< Topic carries PWM messages from a broker to a device. */
-  char *_topic_signal_ds18_brkr = NULL; /*!< Topic carries ds18x20 messages from
-                                   a device to a broker. */
-  char *_topic_signal_ds18_device = NULL;   /*!< Topic carries ds18x20 messages
-                                       from a broker to a device. */
-  char *_topic_signal_pixels_brkr = NULL;   /*!< Topic carries pixel messages */
-  char *_topic_signal_pixels_device = NULL; /*!< Topic carries pixel messages */
-  char *_topic_signal_uart_brkr = NULL;     /*!< Topic carries UART messages */
-  char *_topic_signal_uart_device = NULL;   /*!< Topic carries UART messages */
-
-  wippersnapper_signal_v1_CreateSignalRequest
-      _incomingSignalMsg; /*!< Incoming signal message from broker */
-  wippersnapper_signal_v1_I2CRequest msgSignalI2C =
-      wippersnapper_signal_v1_I2CRequest_init_zero; ///< I2C request wrapper
-                                                    ///< message
-
-  // ds signal msg
-  wippersnapper_signal_v1_Ds18x20Request msgSignalDS =
-      wippersnapper_signal_v1_Ds18x20Request_init_zero; ///< DS request message
-                                                        ///< wrapper
-
-  // servo message
-  wippersnapper_signal_v1_ServoRequest
-      msgServo; ///< ServoRequest wrapper message
-  wippersnapper_signal_v1_PWMRequest msgPWM =
-      wippersnapper_signal_v1_PWMRequest_init_zero; ///< PWM request wrapper
-                                                    ///< message.
-
-  // pixels signal message
-  wippersnapper_signal_v1_PixelsRequest
-      msgPixels; ///< PixelsRequest wrapper message
-
-  wippersnapper_signal_v1_UARTRequest
-      msgSignalUART; ///< UARTReq wrapper message
+  char *_topic_signal_broker_to_device = NULL; /*!< MQTT topic for the device
+                                                  to broker signal */
+  char *_topic_signal_device_to_broker = NULL; /*!< MQTT topic for the broker
+                                                  to device signal */
 
   char *throttleMessage; /*!< Pointer to throttle message data. */
   int throttleTime;      /*!< Total amount of time to throttle the device, in
                             milliseconds. */
-
   bool pinCfgCompleted = false; /*!< Did initial pin sync complete? */
 
 // enable LEDC if esp32
@@ -420,28 +365,15 @@ protected:
 
   Adafruit_MQTT_Subscribe *_topic_description_sub; /*!< Subscription callback
                                                       for registration topic. */
-  Adafruit_MQTT_Publish *_topic_signal_device_pub; /*!< Subscription callback
-                                                      for D2C signal topic. */
-  Adafruit_MQTT_Subscribe *_topic_signal_brkr_sub; /*!< Subscription callback
-                                                      for C2D signal topic. */
-  Adafruit_MQTT_Subscribe
-      *_topic_signal_i2c_sub; /*!< Subscription callback for I2C topic. */
-  Adafruit_MQTT_Subscribe
-      *_topic_signal_servo_sub; /*!< Subscription callback for servo topic. */
-  Adafruit_MQTT_Subscribe
-      *_topic_signal_pwm_sub; /*!< Subscription callback for pwm topic. */
-  Adafruit_MQTT_Subscribe
-      *_topic_signal_ds18_sub; /*!< Subscribes to signal's ds18x20 topic. */
-  Adafruit_MQTT_Subscribe
-      *_topic_signal_pixels_sub; /*!< Subscribes to pixel device topic. */
-  Adafruit_MQTT_Subscribe
-      *_topic_signal_uart_sub; /*!< Subscribes to signal's UART topic. */
+  Adafruit_MQTT_Subscribe *_sub_signal_broker_to_device_topic;
 
+  // TODO: Can we consolidate to one error topic?
   Adafruit_MQTT_Subscribe
-      *_err_sub; /*!< Subscription to Adafruit IO Error topic. */
+      *_sub_error_topic; /*!< Subscription to Adafruit IO Error topic. */
   Adafruit_MQTT_Subscribe
-      *_throttle_sub; /*!< Subscription to Adafruit IO Throttle topic. */
+      *_sub_throttle_topic; /*!< Subscription to Adafruit IO Throttle topic. */
 
+  // TODO: Do we need to keep this here?
   wippersnapper_signal_v1_CreateSignalRequest
       _outgoingSignalMsg; /*!< Outgoing signal message from device */
 };
