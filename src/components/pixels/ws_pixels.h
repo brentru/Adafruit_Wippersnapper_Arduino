@@ -27,16 +27,15 @@
 
 /** Object representation of a strand of pixels */
 struct strand_s {
-  Adafruit_NeoPixel *neoPixelPtr; ///< Ptr to a NeoPixel object
-  Adafruit_DotStar *dotStarPtr;   ///< Ptr to a DotStar object
-  wippersnapper_pixels_v1_PixelsType
-      type;           ///< Type of strand (DotStar, NeoPixel)
-  uint8_t brightness; ///< Strand brightness (0 to 255)
-  uint16_t numPixels; ///< Number of pixels on strand
-  wippersnapper_pixels_v1_PixelsOrder ordering; ///< Color order of strand
-  int16_t pinNeoPixel;                          ///< NeoPixel strand data pin
-  int16_t pinDotStarData;                       ///< DotStar strand data pin
-  int16_t pinDotStarClock;                      ///< DotStar strand clock pin
+  Adafruit_NeoPixel *neoPixelPtr;       ///< Ptr to a NeoPixel object
+  Adafruit_DotStar *dotStarPtr;         ///< Ptr to a DotStar object
+  wippersnapper_pixels_PixelsType type; ///< Type of strand (DotStar, NeoPixel)
+  uint8_t brightness;                   ///< Strand brightness (0 to 255)
+  uint16_t numPixels;                   ///< Number of pixels on strand
+  wippersnapper_pixels_PixelsOrder ordering; ///< Color order of strand
+  int16_t pinNeoPixel;                       ///< NeoPixel strand data pin
+  int16_t pinDotStarData;                    ///< DotStar strand data pin
+  int16_t pinDotStarClock;                   ///< DotStar strand clock pin
 };
 
 class Wippersnapper; ///< friend class
@@ -52,19 +51,17 @@ public:
   ~ws_pixels();
 
   // Protobuf RPC
-  bool
-  addStrand(wippersnapper_pixels_v1_PixelsCreateRequest *pixelsCreateReqMsg);
-  void
-  deleteStrand(wippersnapper_pixels_v1_PixelsDeleteRequest *pixelsDeleteMsg);
-  void fillStrand(wippersnapper_pixels_v1_PixelsWriteRequest *pixelsWriteMsg);
+  bool addStrand(wippersnapper_pixels_PixelsAdd *msgPixelsAdd);
+  void removeStrand(wippersnapper_pixels_PixelsRemove *msgPixelsRemove);
+  void writeStrand(wippersnapper_pixels_PixelsWrite *msgPixelsWrite);
 
   // Helpers
   int16_t allocateStrand();
   void deallocateStrand(int16_t strandIdx);
-  int getStrandIdx(int16_t pin, wippersnapper_pixels_v1_PixelsType type);
+  int getStrandIdx(int16_t pin, wippersnapper_pixels_PixelsType type);
   neoPixelType
-  getNeoPixelStrandOrder(wippersnapper_pixels_v1_PixelsOrder pixelOrder);
-  uint8_t getDotStarStrandOrder(wippersnapper_pixels_v1_PixelsOrder pixelOrder);
+  getNeoPixelStrandOrder(wippersnapper_pixels_PixelsOrder pixelOrder);
+  uint8_t getDotStarStrandOrder(wippersnapper_pixels_PixelsOrder pixelOrder);
   void publishAddStrandResponse(bool is_success, char *pixels_pin_data);
   uint32_t getGammaCorrectedColor(uint32_t pixel_color, strand_s strand);
 };

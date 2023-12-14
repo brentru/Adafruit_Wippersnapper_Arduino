@@ -1406,7 +1406,7 @@ bool cbDecodePixelsMsg(pb_istream_t *stream, const pb_field_t *field,
     }
 
     // delete strand
-    WS._ws_pixelsComponent->deleteStrand(&msgPixelsDeleteReq);
+    WS._ws_pixelsComponent->removeStrand(&msgPixelsDeleteReq);
   } else if (field->tag ==
              wippersnapper_signal_v1_PixelsRequest_req_pixels_write_tag) {
     WS_DEBUG_PRINTLN(
@@ -1424,7 +1424,7 @@ bool cbDecodePixelsMsg(pb_istream_t *stream, const pb_field_t *field,
     }
 
     // fill strand
-    WS._ws_pixelsComponent->fillStrand(&msgPixelsWritereq);
+    WS._ws_pixelsComponent->writeStrand(&msgPixelsWritereq);
   } else {
     WS_DEBUG_PRINTLN("ERROR: Pixels message type not found!");
     return false;
@@ -1505,7 +1505,7 @@ bool cbDecodeUARTMessage(pb_istream_t *stream, const pb_field_t *field,
       WS._uartComponent->initUARTBus(&msgUARTInitReq); // Init. UART bus
 
     // Attach UART device to the bus specified in the message
-    bool did_begin = WS._uartComponent->initUARTDevice(&msgUARTInitReq);
+    bool did_begin = WS._uartComponent->addUARTDevice(&msgUARTInitReq);
 
     // Create a UARTResponse message
     wippersnapper_signal_v1_UARTResponse msgUARTResponse =
@@ -1543,7 +1543,7 @@ bool cbDecodeUARTMessage(pb_istream_t *stream, const pb_field_t *field,
       return false;
     }
     // detach UART device
-    WS._uartComponent->detachUARTDevice(&msgUARTDetachReq);
+    WS._uartComponent->removeUARTDevice(&msgUARTDetachReq);
     WS_DEBUG_PRINTLN("Detached uart device from bus");
   } else {
     WS_DEBUG_PRINTLN("ERROR: UART message type not found!");

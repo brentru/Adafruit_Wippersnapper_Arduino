@@ -135,8 +135,8 @@ public:
   /*******************************************************************************/
   /*!
       @brief   Packs the UART device's data into a UARTResponse message.
-      @param   msgUARTResponse
-               Pointer to a UARTResponse message.
+      @param   msgUartEvent
+               Pointer to a msgUartEvent message.
       @param   event_index
                Index of the UART device's event.
       @param   sensor_type
@@ -145,14 +145,17 @@ public:
                Sensor data value.
   */
   /*******************************************************************************/
-  void packUARTResponse(wippersnapper_signal_v1_UARTResponse *msgUARTResponse,
+  void packUARTResponse(wippersnapper_uart_UARTEvent *msgUartEvent,
                         int event_index,
-                        wippersnapper_i2c_v1_SensorType sensor_type,
+                        wippersnapper_sensor_SensorType sensor_type,
                         float sensor_value) {
-    msgUARTResponse->payload.resp_uart_device_event.sensor_event[event_index]
+    // TODO: Add back the correct packing for encoding this message
+    /*
+    msgUartEvent->payload.resp_uart_device_event.sensor_event[event_index]
         .type = sensor_type;
-    msgUARTResponse->payload.resp_uart_device_event.sensor_event[event_index]
+    msgUartEvent->payload.resp_uart_device_event.sensor_event[event_index]
         .value = sensor_value;
+    */
   }
 
   /*******************************************************************************/

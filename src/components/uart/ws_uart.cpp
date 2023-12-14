@@ -152,7 +152,7 @@ bool ws_uart::isUARTBusInitialized() { return _is_bus_initialized; }
     @returns  True if UART driver was successfully initialized.
 */
 /*******************************************************************************/
-bool ws_uart::initUARTDevice(
+bool ws_uart::addUARTDevice(
     wippersnapper_uart_v1_UARTDeviceAttachRequest *msgUARTRequest) {
   // Ensure the protobuf contains a device identifier
   if (strlen(msgUARTRequest->device_id) == 0) {
@@ -220,7 +220,7 @@ void ws_uart::deinitUARTDevice(const char *device_id) {
               Pointer to a UARTDeviceDetachRequest message.
 */
 /*******************************************************************************/
-void ws_uart::detachUARTDevice(
+void ws_uart::removeUARTDevice(
     wippersnapper_uart_v1_UARTDeviceDetachRequest *msgUARTDetachReq) {
   // Deallocate the memory pointed to by the driver and detach it from the bus
   deinitUARTDevice(msgUARTDetachReq->device_id);

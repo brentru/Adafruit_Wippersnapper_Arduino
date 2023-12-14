@@ -17,15 +17,9 @@
 #include "ws_pixels.h"
 
 strand_s strands[MAX_PIXEL_STRANDS]{
-    nullptr,
-    nullptr,
-    wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_UNSPECIFIED,
-    0,
-    0,
-    wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_UNSPECIFIED,
-    -1,
-    -1,
-    -1}; ///< Contains all pixel strands used by WipperSnapper
+    nullptr, nullptr, wippersnapper_pixels_PixelsType_PIXELS_TYPE_UNSPECIFIED,
+    0,       0,       wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_UNSPECIFIED,
+    -1,      -1,      -1}; ///< Contains all pixel strands used by WipperSnapper
 
 /**************************************************************************/
 /*!
@@ -49,7 +43,7 @@ int16_t ws_pixels::allocateStrand() {
   for (size_t strandIdx = 0; strandIdx < sizeof(strands) / sizeof(strands[0]);
        strandIdx++) {
     if (strands[strandIdx].type ==
-        wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_UNSPECIFIED) {
+        wippersnapper_pixels_PixelsType_PIXELS_TYPE_UNSPECIFIED) {
       return strandIdx;
     }
   }
@@ -81,10 +75,10 @@ void ws_pixels::deallocateStrand(int16_t strandIdx) {
   strands[strandIdx] = {
       nullptr,
       nullptr,
-      wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_UNSPECIFIED,
+      wippersnapper_pixels_PixelsType_PIXELS_TYPE_UNSPECIFIED,
       0,
       0,
-      wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_UNSPECIFIED,
+      wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_UNSPECIFIED,
       -1,
       -1,
       -1};
@@ -99,18 +93,18 @@ void ws_pixels::deallocateStrand(int16_t strandIdx) {
              constructor
 */
 /**************************************************************************/
-neoPixelType ws_pixels::getNeoPixelStrandOrder(
-    wippersnapper_pixels_v1_PixelsOrder pixelOrder) {
+neoPixelType
+ws_pixels::getNeoPixelStrandOrder(wippersnapper_pixels_PixelsOrder pixelOrder) {
   switch (pixelOrder) {
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_GRB:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_GRB:
     return NEO_GRB + NEO_KHZ800;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_GRBW:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_GRBW:
     return NEO_GRBW + NEO_KHZ800;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_RGB:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_RGB:
     return NEO_RGB + NEO_KHZ800;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_RGBW:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_RGBW:
     return NEO_RGBW + NEO_KHZ800;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_BRG:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_BRG:
     return NEO_BRG + NEO_KHZ800;
   default:
     return NEO_GRB + NEO_KHZ800;
@@ -125,20 +119,20 @@ neoPixelType ws_pixels::getNeoPixelStrandOrder(
     @returns Type of DotStar strand.
 */
 /**************************************************************************/
-uint8_t ws_pixels::getDotStarStrandOrder(
-    wippersnapper_pixels_v1_PixelsOrder pixelOrder) {
+uint8_t
+ws_pixels::getDotStarStrandOrder(wippersnapper_pixels_PixelsOrder pixelOrder) {
   switch (pixelOrder) {
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_GRB:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_GRB:
     return DOTSTAR_GRB;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_RGB:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_RGB:
     return DOTSTAR_RGB;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_BRG:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_BRG:
     return DOTSTAR_BRG;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_RBG:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_RBG:
     return DOTSTAR_RBG;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_GBR:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_GBR:
     return DOTSTAR_GBR;
-  case wippersnapper_pixels_v1_PixelsOrder_PIXELS_ORDER_BGR:
+  case wippersnapper_pixels_PixelsOrder_PIXELS_ORDER_BGR:
     return DOTSTAR_BGR;
   default:
     return DOTSTAR_BRG;
@@ -156,86 +150,86 @@ uint8_t ws_pixels::getDotStarStrandOrder(
 /**************************************************************************/
 void ws_pixels::publishAddStrandResponse(bool is_success,
                                          char *pixels_pin_data) {
-  // Create response message
-  wippersnapper_signal_v1_PixelsResponse msgInitResp =
-      wippersnapper_signal_v1_PixelsResponse_init_zero;
-  msgInitResp.which_payload =
-      wippersnapper_signal_v1_PixelsResponse_resp_pixels_create_tag;
-  // Fill response message
-  msgInitResp.payload.resp_pixels_create.is_success = is_success;
-  memcpy(msgInitResp.payload.resp_pixels_create.pixels_pin_data,
-         pixels_pin_data, sizeof(char) * 6);
+  // TODO: Putback after signal implementation
 
-  // Encode `wippersnapper_pixels_v1_PixelsCreateResponse` message
-  memset(WS._buffer_outgoing, 0, sizeof(WS._buffer_outgoing));
-  pb_ostream_t ostream =
-      pb_ostream_from_buffer(WS._buffer_outgoing, sizeof(WS._buffer_outgoing));
-  if (!pb_encode(&ostream, wippersnapper_signal_v1_PixelsResponse_fields,
-                 &msgInitResp)) {
-    WS_DEBUG_PRINTLN("ERROR: Unable to encode "
-                     "wippersnapper_signal_v1_PixelsResponse message!");
-    return;
-  }
+  /*   // Create response message
+    wippersnapper_signal_v1_PixelsResponse msgInitResp =
+        wippersnapper_signal_v1_PixelsResponse_init_zero;
+    msgInitResp.which_payload =
+        wippersnapper_signal_v1_PixelsResponse_resp_pixels_create_tag;
+    // Fill response message
+    msgInitResp.payload.resp_pixels_create.is_success = is_success;
+    memcpy(msgInitResp.payload.resp_pixels_create.pixels_pin_data,
+           pixels_pin_data, sizeof(char) * 6);
 
-  // Publish message to broker
-  size_t msgSz;
-  pb_get_encoded_size(&msgSz, wippersnapper_signal_v1_PixelsResponse_fields,
-                      &msgInitResp);
-  WS_DEBUG_PRINT("-> wippersnapper_signal_v1_PixelsResponse...");
-/*   WS._mqtt->publish(WS._topic_signal_pixels_device, WS._buffer_outgoing, msgSz,
-                    1); */
+    // Encode ` wippersnapper_pixels_PixelsCreateResponse` message
+    memset(WS._buffer_outgoing, 0, sizeof(WS._buffer_outgoing));
+    pb_ostream_t ostream =
+        pb_ostream_from_buffer(WS._buffer_outgoing,
+    sizeof(WS._buffer_outgoing)); if (!pb_encode(&ostream,
+    wippersnapper_signal_v1_PixelsResponse_fields, &msgInitResp)) {
+      WS_DEBUG_PRINTLN("ERROR: Unable to encode "
+                       "wippersnapper_signal_v1_PixelsResponse message!");
+      return;
+    }
+
+    // Publish message to broker
+    size_t msgSz;
+    pb_get_encoded_size(&msgSz, wippersnapper_signal_v1_PixelsResponse_fields,
+                        &msgInitResp);
+    WS_DEBUG_PRINT("-> wippersnapper_signal_v1_PixelsResponse...");
+    WS._mqtt->publish(WS._topic_signal_pixels_device, WS._buffer_outgoing,
+    msgSz, 1); */
   WS_DEBUG_PRINTLN("Published!");
 }
 
 /**************************************************************************/
 /*!
     @brief   Initializes a strand of addressable RGB Pixels.
-    @param   pixelsCreateReqMsg
+    @param   msgPixelsAdd
              Pointer to strand init. request message
     @returns True if successfully initialized, False otherwise.
 */
 /**************************************************************************/
-bool ws_pixels::addStrand(
-    wippersnapper_pixels_v1_PixelsCreateRequest *pixelsCreateReqMsg) {
+bool ws_pixels::addStrand(wippersnapper_pixels_PixelsAdd *msgPixelsAdd) {
   // attempt to allocate a free strand from array of strands
   int16_t strandIdx = allocateStrand();
   if (strandIdx == ERR_INVALID_STRAND) { // unable to allocate a strand
-    if (pixelsCreateReqMsg->pixels_type ==
-        wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_NEOPIXEL)
-      publishAddStrandResponse(false, pixelsCreateReqMsg->pixels_pin_neopixel);
-    else if (pixelsCreateReqMsg->pixels_type ==
-             wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_DOTSTAR)
-      publishAddStrandResponse(false,
-                               pixelsCreateReqMsg->pixels_pin_dotstar_data);
+    if (msgPixelsAdd->pixels_type ==
+        wippersnapper_pixels_PixelsType_PIXELS_TYPE_NEOPIXEL)
+      publishAddStrandResponse(false, msgPixelsAdd->pixels_pin_neopixel);
+    else if (msgPixelsAdd->pixels_type ==
+             wippersnapper_pixels_PixelsType_PIXELS_TYPE_DOTSTAR)
+      publishAddStrandResponse(false, msgPixelsAdd->pixels_pin_dotstar_data);
     return false;
   }
 
   // fill generic members of the strand obj.
-  strands[strandIdx].type = pixelsCreateReqMsg->pixels_type;
-  strands[strandIdx].brightness = pixelsCreateReqMsg->pixels_brightness;
-  strands[strandIdx].numPixels = pixelsCreateReqMsg->pixels_num;
-  strands[strandIdx].ordering = pixelsCreateReqMsg->pixels_ordering;
+  strands[strandIdx].type = msgPixelsAdd->pixels_type;
+  strands[strandIdx].brightness = msgPixelsAdd->pixels_brightness;
+  strands[strandIdx].numPixels = msgPixelsAdd->pixels_num;
+  strands[strandIdx].ordering = msgPixelsAdd->pixels_ordering;
 
   // fill strand pins
-  if (pixelsCreateReqMsg->pixels_type ==
-      wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_NEOPIXEL) {
+  if (msgPixelsAdd->pixels_type ==
+      wippersnapper_pixels_PixelsType_PIXELS_TYPE_NEOPIXEL) {
     strands[strandIdx].pinNeoPixel =
-        atoi(pixelsCreateReqMsg->pixels_pin_neopixel + 1);
-  } else if (pixelsCreateReqMsg->pixels_type ==
-             wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_DOTSTAR) {
+        atoi(msgPixelsAdd->pixels_pin_neopixel + 1);
+  } else if (msgPixelsAdd->pixels_type ==
+             wippersnapper_pixels_PixelsType_PIXELS_TYPE_DOTSTAR) {
     strands[strandIdx].pinDotStarData =
-        atoi(pixelsCreateReqMsg->pixels_pin_dotstar_data + 1);
+        atoi(msgPixelsAdd->pixels_pin_dotstar_data + 1);
     strands[strandIdx].pinDotStarClock =
-        atoi(pixelsCreateReqMsg->pixels_pin_dotstar_clock + 1);
+        atoi(msgPixelsAdd->pixels_pin_dotstar_clock + 1);
   } else {
     WS_DEBUG_PRINTLN("ERROR: Invalid strand type provided!");
-    publishAddStrandResponse(false, pixelsCreateReqMsg->pixels_pin_neopixel);
+    publishAddStrandResponse(false, msgPixelsAdd->pixels_pin_neopixel);
     return false;
   }
 
   // Fill specific members of strand obj.
-  if (pixelsCreateReqMsg->pixels_type ==
-      wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_NEOPIXEL) {
+  if (msgPixelsAdd->pixels_type ==
+      wippersnapper_pixels_PixelsType_PIXELS_TYPE_NEOPIXEL) {
     // Release status LED
     // is requested pin in-use by the status pixel?
     if (getStatusNeoPixelPin() == strands[strandIdx].pinNeoPixel &&
@@ -244,8 +238,8 @@ bool ws_pixels::addStrand(
 
     // Create a new strand of NeoPixels
     strands[strandIdx].neoPixelPtr = new Adafruit_NeoPixel(
-        pixelsCreateReqMsg->pixels_num, strands[strandIdx].pinNeoPixel,
-        getNeoPixelStrandOrder(pixelsCreateReqMsg->pixels_ordering));
+        msgPixelsAdd->pixels_num, strands[strandIdx].pinNeoPixel,
+        getNeoPixelStrandOrder(msgPixelsAdd->pixels_ordering));
 
     // Initialize strand
     strands[strandIdx].neoPixelPtr->begin();
@@ -256,28 +250,28 @@ bool ws_pixels::addStrand(
 
     // Check that we've correctly initialized the strand
     if (strands[strandIdx].neoPixelPtr->numPixels() == 0) {
-      publishAddStrandResponse(false, pixelsCreateReqMsg->pixels_pin_neopixel);
+      publishAddStrandResponse(false, msgPixelsAdd->pixels_pin_neopixel);
       return false;
     }
 
     WS_DEBUG_PRINT("Created NeoPixel strand of length ");
-    WS_DEBUG_PRINT(pixelsCreateReqMsg->pixels_num);
+    WS_DEBUG_PRINT(msgPixelsAdd->pixels_num);
     WS_DEBUG_PRINT(" on GPIO #");
-    WS_DEBUG_PRINTLN(pixelsCreateReqMsg->pixels_pin_neopixel);
+    WS_DEBUG_PRINTLN(msgPixelsAdd->pixels_pin_neopixel);
 
 #ifdef USE_DISPLAY
     char buffer[100];
     snprintf(buffer, 100, "[Pixel] Added NeoPixel strand on Pin %s\n.",
-             pixelsCreateReqMsg->pixels_pin_neopixel);
+             msgPixelsAdd->pixels_pin_neopixel);
     WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 
-    publishAddStrandResponse(true, pixelsCreateReqMsg->pixels_pin_neopixel);
-  } else if (pixelsCreateReqMsg->pixels_type ==
-             wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_DOTSTAR) {
+    publishAddStrandResponse(true, msgPixelsAdd->pixels_pin_neopixel);
+  } else if (msgPixelsAdd->pixels_type ==
+             wippersnapper_pixels_PixelsType_PIXELS_TYPE_DOTSTAR) {
 
     // release the status dotstar, if it is both in-use and the pin within
-    // `pixelsCreateReqMsg`
+    // `msgPixelsAdd`
     if ((strands[strandIdx].pinDotStarData == getStatusDotStarDataPin()) &&
         WS.lockStatusDotStar) {
       releaseStatusLED();
@@ -297,8 +291,7 @@ bool ws_pixels::addStrand(
 
     // post-init sanity check
     if (strands[strandIdx].dotStarPtr->numPixels() == 0) {
-      publishAddStrandResponse(false,
-                               pixelsCreateReqMsg->pixels_pin_dotstar_data);
+      publishAddStrandResponse(false, msgPixelsAdd->pixels_pin_dotstar_data);
       return false;
     }
 
@@ -310,15 +303,14 @@ bool ws_pixels::addStrand(
 #ifdef USE_DISPLAY
     char buffer[100];
     snprintf(buffer, 100, "[Pixel] Added NeoPixel strand on Pin %s\n.",
-             pixelsCreateReqMsg->pixels_pin_neopixel);
+             msgPixelsAdd->pixels_pin_neopixel);
     WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 
-    publishAddStrandResponse(true, pixelsCreateReqMsg->pixels_pin_dotstar_data);
+    publishAddStrandResponse(true, msgPixelsAdd->pixels_pin_dotstar_data);
   } else {
     WS_DEBUG_PRINTLN("ERROR: Invalid strand type provided!");
-    publishAddStrandResponse(false,
-                             pixelsCreateReqMsg->pixels_pin_dotstar_data);
+    publishAddStrandResponse(false, msgPixelsAdd->pixels_pin_dotstar_data);
     return false;
   }
 
@@ -337,13 +329,13 @@ bool ws_pixels::addStrand(
 */
 /**************************************************************************/
 int ws_pixels::getStrandIdx(int16_t dataPin,
-                            wippersnapper_pixels_v1_PixelsType type) {
+                            wippersnapper_pixels_PixelsType type) {
   for (size_t strandIdx = 0; strandIdx < sizeof(strands) / sizeof(strands[0]);
        strandIdx++) {
-    if (type == wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_NEOPIXEL &&
+    if (type == wippersnapper_pixels_PixelsType_PIXELS_TYPE_NEOPIXEL &&
         strands[strandIdx].pinNeoPixel == dataPin)
       return strandIdx;
-    if (type == wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_DOTSTAR &&
+    if (type == wippersnapper_pixels_PixelsType_PIXELS_TYPE_DOTSTAR &&
         strands[strandIdx].pinDotStarData == dataPin)
       return strandIdx;
   }
@@ -354,15 +346,14 @@ int ws_pixels::getStrandIdx(int16_t dataPin,
 /*!
     @brief   Deletes a `strand_t` from `strands`, deinitializes a strand,
              and frees its resources.
-    @param   pixelsDeleteMsg
-             Protobuf message from Adafruit IO containing a
-             `wippersnapper_pixels_v1_PixelsDeleteRequest`.
+    @param   msgPixelsRemove
+             Describes the pixel strand to remove.
 */
 /**************************************************************************/
-void ws_pixels::deleteStrand(
-    wippersnapper_pixels_v1_PixelsDeleteRequest *pixelsDeleteMsg) {
-  int strandIdx = getStrandIdx(atoi(pixelsDeleteMsg->pixels_pin_data + 1),
-                               pixelsDeleteMsg->pixels_type);
+void ws_pixels::removeStrand(
+    wippersnapper_pixels_PixelsRemove *msgPixelsRemove) {
+  int strandIdx = getStrandIdx(atoi(msgPixelsRemove->pixels_pin_data + 1),
+                               msgPixelsRemove->pixels_type);
   if (strandIdx == ERR_INVALID_STRAND) {
     WS_DEBUG_PRINTLN("ERROR: Strand not found, unable to delete strand!");
     return;
@@ -371,12 +362,12 @@ void ws_pixels::deleteStrand(
   deallocateStrand(strandIdx);
 
   WS_DEBUG_PRINT("Deleted strand on data pin ");
-  WS_DEBUG_PRINTLN(pixelsDeleteMsg->pixels_pin_data);
-
+  WS_DEBUG_PRINTLN(msgPixelsRemove->pixels_pin_data);
+  
 #ifdef USE_DISPLAY
   char buffer[100];
   snprintf(buffer, 100, "[Pixel] Deleted strand on pin %s\n.",
-           pixelsDeleteMsg->pixels_pin_data);
+           msgPixelsRemove->pixels_pin_data);
   WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 }
@@ -408,17 +399,16 @@ uint32_t ws_pixels::getGammaCorrectedColor(uint32_t pixel_color,
 /*!
     @brief   Writes a color from Adafruit IO to a strand of
              addressable pixels
-    @param   pixelsWriteMsg
+    @param   msgPixelsWrite
              Protobuf message from Adafruit IO containing a
-             `wippersnapper_pixels_v1_PixelsWriteRequest`.
+             ` wippersnapper_pixels_PixelsWriteRequest`.
 */
 /**************************************************************************/
-void ws_pixels::fillStrand(
-    wippersnapper_pixels_v1_PixelsWriteRequest *pixelsWriteMsg) {
+void ws_pixels::writeStrand(wippersnapper_pixels_PixelsWrite *msgPixelsWrite) {
 
   // Get index of pixel strand
-  int strandIdx = getStrandIdx(atoi(pixelsWriteMsg->pixels_pin_data + 1),
-                               pixelsWriteMsg->pixels_type);
+  int strandIdx = getStrandIdx(atoi(msgPixelsWrite->pixels_pin_data + 1),
+                               msgPixelsWrite->pixels_type);
   if (strandIdx == ERR_INVALID_STRAND) {
     WS_DEBUG_PRINTLN(
         "ERROR: Pixel strand not found, can not write a color to the strand!");
@@ -426,25 +416,25 @@ void ws_pixels::fillStrand(
   }
 
   uint32_t rgbColorGamma =
-      getGammaCorrectedColor(pixelsWriteMsg->pixels_color, strands[strandIdx]);
+      getGammaCorrectedColor(msgPixelsWrite->pixels_color, strands[strandIdx]);
 
   WS_DEBUG_PRINT("Filling color: ");
-  WS_DEBUG_PRINTLN(pixelsWriteMsg->pixels_color);
+  WS_DEBUG_PRINTLN(msgPixelsWrite->pixels_color);
 
 #ifdef USE_DISPLAY
   char buffer[100];
   snprintf(buffer, 100, "[Pixel] Filling strand on pin %s with color %u\n",
-           pixelsWriteMsg->pixels_pin_data,
-           (unsigned int)pixelsWriteMsg->pixels_color);
+           msgPixelsWrite->pixels_pin_data,
+           (unsigned int)msgPixelsWrite->pixels_color);
   WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 
-  if (pixelsWriteMsg->pixels_type ==
-      wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_NEOPIXEL) {
+  if (msgPixelsWrite->pixels_type ==
+      wippersnapper_pixels_PixelsType_PIXELS_TYPE_NEOPIXEL) {
     strands[strandIdx].neoPixelPtr->fill(rgbColorGamma);
     strands[strandIdx].neoPixelPtr->show();
-  } else if (pixelsWriteMsg->pixels_type ==
-             wippersnapper_pixels_v1_PixelsType_PIXELS_TYPE_DOTSTAR) {
+  } else if (msgPixelsWrite->pixels_type ==
+             wippersnapper_pixels_PixelsType_PIXELS_TYPE_DOTSTAR) {
     strands[strandIdx].dotStarPtr->fill(rgbColorGamma);
     strands[strandIdx].dotStarPtr->show();
   } else {

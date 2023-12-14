@@ -140,6 +140,8 @@ public:
   /*******************************************************************************/
   void send_data() override {
     // Create a new UART response message
+    // TODO: Put this bakc when we're ready
+    /*
     wippersnapper_signal_v1_UARTResponse msgUARTResponse =
         wippersnapper_signal_v1_UARTResponse_init_zero;
     msgUARTResponse.which_payload =
@@ -200,8 +202,8 @@ public:
     Serial.println("Published!");
 
     setPrvPollTime(millis());
+    */
   }
-
 protected:
   Adafruit_PM25AQI *_aqi = nullptr; ///< Pointer to PM25AQI sensor object
   PM25_AQI_Data _data;              ///< PM25AQI sensor data struct.
@@ -211,5 +213,4 @@ protected:
   HardwareSerial *_hwSerial = nullptr; ///< Pointer to Hardware UART interface
 #endif
 };
-
 #endif // WS_UART_DRV_PM25AQI_H
