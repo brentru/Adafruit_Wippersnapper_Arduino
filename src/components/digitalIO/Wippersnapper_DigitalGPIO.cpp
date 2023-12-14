@@ -54,16 +54,11 @@ Wippersnapper_DigitalGPIO::~Wippersnapper_DigitalGPIO() {
             The pin's name.
     @param  period
             The pin's period, in seconds.
-    @param  pull
-            The pin's pull mode.
 */
 /*******************************************************************************************************************************/
-void Wippersnapper_DigitalGPIO::initDigitalPin(
-    wippersnapper_pin_v1_ConfigurePinRequest_Direction direction,
-    uint8_t pinName, float period,
-    wippersnapper_pin_v1_ConfigurePinRequest_Pull pull) {
+void Wippersnapper_DigitalGPIO::initDigitalPin(wippersnapper_digitalio_DigitalIODirection direction, uint8_t pinName, float period) {
   if (direction ==
-      wippersnapper_pin_v1_ConfigurePinRequest_Direction_DIRECTION_OUTPUT) {
+      wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_OUTPUT) {
 
 #ifdef STATUS_LED_PIN
     // deinit status led, use it as a dio component instead
@@ -90,13 +85,11 @@ void Wippersnapper_DigitalGPIO::initDigitalPin(
     pinMode(pinName, OUTPUT);
     digitalWrite(pinName, LOW); // initialize LOW
 #endif
-  } else if (
-      direction ==
-      wippersnapper_pin_v1_ConfigurePinRequest_Direction_DIRECTION_INPUT) {
+  } else if ((direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT) || (direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP) ) {
     WS_DEBUG_PRINT("Configuring digital input pin on D");
     WS_DEBUG_PRINT(pinName);
 
-    if (pull == wippersnapper_pin_v1_ConfigurePinRequest_Pull_PULL_UP) {
+    if (direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP) {
       WS_DEBUG_PRINTLN("with internal pull-up enabled");
       pinMode(pinName, INPUT_PULLUP);
     } else {
@@ -141,7 +134,7 @@ void Wippersnapper_DigitalGPIO::initDigitalPin(
 */
 /********************************************************************************************************************************/
 void Wippersnapper_DigitalGPIO::deinitDigitalPin(
-    wippersnapper_pin_v1_ConfigurePinRequest_Direction direction,
+    wippersnapper_digitalio_DigitalIODirection direction,
     uint8_t pinName) {
   WS_DEBUG_PRINT("Deinitializing digital pin ");
   WS_DEBUG_PRINTLN(pinName);
@@ -152,8 +145,7 @@ void Wippersnapper_DigitalGPIO::deinitDigitalPin(
   WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 
-  if (direction ==
-      wippersnapper_pin_v1_ConfigurePinRequest_Direction_DIRECTION_INPUT) {
+  if ((direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT) || (direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP) ) {
     // de-allocate the pin within digital_input_pins[]
     for (int i = 0; i < _totalDigitalInputPins; i++) {
       if (_digital_input_pins[i].pinName == pinName) {
@@ -253,7 +245,8 @@ void Wippersnapper_DigitalGPIO::processDigitalInputs() {
         WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 
-        // Create new signal message
+        // TODO Putback signal message packing and publishing
+/*         // Create new signal message
         wippersnapper_signal_v1_CreateSignalRequest _outgoingSignalMsg =
             wippersnapper_signal_v1_CreateSignalRequest_init_zero;
 
@@ -275,7 +268,7 @@ void Wippersnapper_DigitalGPIO::processDigitalInputs() {
         WS_DEBUG_PRINT("Publishing pinEvent...");
         // TODO: add back publish()
         //WS.publish(WS._topic_signal_device, WS._buffer_outgoing, msgSz, 1);
-        WS_DEBUG_PRINTLN("Published!");
+        WS_DEBUG_PRINTLN("Published!"); */
 
         // reset the digital pin
         _digital_input_pins[i].prvPeriod = curTime;
@@ -294,7 +287,8 @@ void Wippersnapper_DigitalGPIO::processDigitalInputs() {
           WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 
-          // Create new signal message
+          // TODO Putback signal message packing and publishing
+          /* // Create new signal message
           wippersnapper_signal_v1_CreateSignalRequest _outgoingSignalMsg =
               wippersnapper_signal_v1_CreateSignalRequest_init_zero;
 
@@ -315,7 +309,7 @@ void Wippersnapper_DigitalGPIO::processDigitalInputs() {
           WS_DEBUG_PRINT("Publishing pinEvent...");
           // TODO: add back publish()
           // WS.publish(WS._topic_signal_device, WS._buffer_outgoing, msgSz, 1);
-          WS_DEBUG_PRINTLN("Published!");
+          WS_DEBUG_PRINTLN("Published!"); */
 
           // set the pin value in the digital pin object for comparison on next
           // run

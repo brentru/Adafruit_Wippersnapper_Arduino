@@ -28,8 +28,8 @@
 #include <pb.h>
 
 // TODO: Do we want to instead handle these with a wrapper class?
-#include <wippersnapper/description/v1/description.pb.h> // description.proto
-#include <wippersnapper/signal/v1/signal.pb.h>           // signal.proto
+#include <wippersnapper/description.pb.h> // description.proto
+#include <wippersnapper/signal.pb.h>           // signal.proto
 
 // External libraries used by this class
 #include "Adafruit_MQTT.h"      // MQTT Client

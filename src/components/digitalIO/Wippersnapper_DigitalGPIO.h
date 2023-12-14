@@ -40,13 +40,8 @@ public:
   Wippersnapper_DigitalGPIO(int32_t totalDigitalInputPins);
   ~Wippersnapper_DigitalGPIO();
 
-  void
-  initDigitalPin(wippersnapper_pin_v1_ConfigurePinRequest_Direction direction,
-                 uint8_t pinName, float period,
-                 wippersnapper_pin_v1_ConfigurePinRequest_Pull pull);
-  void
-  deinitDigitalPin(wippersnapper_pin_v1_ConfigurePinRequest_Direction direction,
-                   uint8_t pinName);
+  void initDigitalPin(wippersnapper_digitalio_DigitalIODirection direction, uint8_t pinName, float period);
+  void deinitDigitalPin(wippersnapper_digitalio_DigitalIODirection direction, uint8_t pinName);
 
   int digitalReadSvc(int pinName);
   void digitalWriteSvc(uint8_t pinName, int pinValue);

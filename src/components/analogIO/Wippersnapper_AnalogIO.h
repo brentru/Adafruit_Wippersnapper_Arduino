@@ -24,7 +24,7 @@
 struct analogInputPin {
   int pinName;  ///< Pin name
   bool enabled; ///< Pin is enabled for sampling
-  wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode
+  wippersnapper_analogio_AnalogReadMode
       readMode;    ///< Which type of analog read to perform
   long period;     ///< Pin timer interval, in millis, -1 if disabled.
   long prvPeriod;  ///< When Pin's timer was previously serviced, in millis
@@ -50,11 +50,8 @@ public:
 
   void initAnalogInputPin(
       int pin, float period,
-      wippersnapper_pin_v1_ConfigurePinRequest_Pull pullMode,
-      wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode analogReadMode);
-  void
-  deinitAnalogPin(wippersnapper_pin_v1_ConfigurePinRequest_Direction direction,
-                  int pin);
+      wippersnapper_analogio_AnalogReadMode analogReadMode);
+  void deinitAnalogPin(int pin);
   void disableAnalogInPin(int pin);
 
   uint16_t getPinValue(int pin);
@@ -68,7 +65,7 @@ public:
   void update();
   bool encodePinEvent(
       uint8_t pinName,
-      wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode readMode,
+      wippersnapper_analogio_AnalogReadMode readMode,
       uint16_t pinValRaw = 0, float pinValVolts = 0.0);
 
 private:

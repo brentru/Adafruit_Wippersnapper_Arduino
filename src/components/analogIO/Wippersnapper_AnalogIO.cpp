@@ -119,22 +119,16 @@ int Wippersnapper_AnalogIO::getNativeResolution() { return _nativeResolution; }
               The analog pin to read from.
     @param  period
               Time between measurements, in seconds.
-   @param  pullMode
-            The pin's pull value.
     @param analogReadMode
             Defines if pin will read and return an ADC value or a voltage value.
 */
 /***********************************************************************************/
 void Wippersnapper_AnalogIO::initAnalogInputPin(
     int pin, float period,
-    wippersnapper_pin_v1_ConfigurePinRequest_Pull pullMode,
-    wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode analogReadMode) {
+    wippersnapper_analogio_AnalogReadMode analogReadMode) {
 
-  // Set analog read pull mode
-  if (pullMode == wippersnapper_pin_v1_ConfigurePinRequest_Pull_PULL_UP)
-    pinMode(pin, INPUT_PULLUP);
-  else
-    pinMode(pin, INPUT);
+  // Configure GPIO as an input
+  pinMode(pin, INPUT);
 
   // Period is in seconds, cast it to long and convert it to milliseconds
   long periodMs = (long)period * 1000;
@@ -180,16 +174,10 @@ void Wippersnapper_AnalogIO::disableAnalogInPin(int pin) {
 
 */
 /***********************************************************************************/
-void Wippersnapper_AnalogIO::deinitAnalogPin(
-    wippersnapper_pin_v1_ConfigurePinRequest_Direction direction, int pin) {
-  WS_DEBUG_PRINT("Deinitializing analog pin A");
-  WS_DEBUG_PRINTLN(pin);
-  if (direction ==
-      wippersnapper_pin_v1_ConfigurePinRequest_Direction_DIRECTION_INPUT) {
-    WS_DEBUG_PRINTLN("Deinitialized analog input pin obj.");
-    disableAnalogInPin(pin);
-  }
+void Wippersnapper_AnalogIO::deinitAnalogPin(int pin) {
+  disableAnalogInPin(pin);
   pinMode(pin, INPUT); // hi-z
+  WS_DEBUG_PRINT("Removed analog pin A"); WS_DEBUG_PRINTLN(pin);
 }
 
 /**********************************************************/
@@ -249,9 +237,10 @@ float Wippersnapper_AnalogIO::getPinValueVolts(int pin) {
 /******************************************************************/
 bool Wippersnapper_AnalogIO::encodePinEvent(
     uint8_t pinName,
-    wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode readMode,
+    wippersnapper_analogio_AnalogReadMode readMode,
     uint16_t pinValRaw, float pinValVolts) {
-  // Create new signal message
+    // TODO: we are going to put this back later when we have the signal message format
+/*   // Create new signal message
   wippersnapper_signal_v1_CreateSignalRequest outgoingSignalMsg =
       wippersnapper_signal_v1_CreateSignalRequest_init_zero;
 
@@ -263,7 +252,7 @@ bool Wippersnapper_AnalogIO::encodePinEvent(
   // Fill pinValue based on the analog read mode
   char buffer[100];
   if (readMode ==
-      wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode_ANALOG_READ_MODE_PIN_VALUE) {
+      wippersnapper_analogio_AnalogReadMode_ANALOG_READ_MODE_PIN_VALUE) {
     sprintf(outgoingSignalMsg.payload.pin_event.pin_value, "%u", pinValRaw);
     snprintf(buffer, 100, "[Pin] A%d read: %u\n", pinName, pinValRaw);
   } else {
@@ -291,9 +280,8 @@ bool Wippersnapper_AnalogIO::encodePinEvent(
                       wippersnapper_signal_v1_CreateSignalRequest_fields,
                       &outgoingSignalMsg);
   WS_DEBUG_PRINT("Publishing pinEvent...");
-  // TODO: Add back publish() call
-  // WS.publish(WS._topic_signal_device, WS._buffer_outgoing, msgSz, 1);
-  WS_DEBUG_PRINTLN("Published!");
+  WS.publish(WS._topic_signal_device, WS._buffer_outgoing, msgSz, 1);
+  WS_DEBUG_PRINTLN("Published!"); */
 
   return true;
 }
@@ -338,11 +326,11 @@ void Wippersnapper_AnalogIO::update() {
 
         // Read from analog pin
         if (_analog_input_pins[i].readMode ==
-            wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode_ANALOG_READ_MODE_PIN_VOLTAGE) {
+            wippersnapper_analogio_AnalogReadMode_ANALOG_READ_MODE_PIN_VOLTAGE) {
           pinValVolts = getPinValueVolts(_analog_input_pins[i].pinName);
         } else if (
             _analog_input_pins[i].readMode ==
-            wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode_ANALOG_READ_MODE_PIN_VALUE) {
+            wippersnapper_analogio_AnalogReadMode_ANALOG_READ_MODE_PIN_VALUE) {
           pinValRaw = getPinValue(_analog_input_pins[i].pinName);
         } else {
           WS_DEBUG_PRINTLN("ERROR: Unable to read pin value, cannot determine "
@@ -374,7 +362,7 @@ void Wippersnapper_AnalogIO::update() {
         if (pinValRaw > _pinValThreshHi || pinValRaw < _pinValThreshLow) {
           // Perform voltage conversion if we need to
           if (_analog_input_pins[i].readMode ==
-              wippersnapper_pin_v1_ConfigurePinRequest_AnalogReadMode_ANALOG_READ_MODE_PIN_VOLTAGE) {
+              wippersnapper_analogio_AnalogReadMode_ANALOG_READ_MODE_PIN_VOLTAGE) {
             pinValVolts = pinValRaw * getAref() / 65536;
           }
 
