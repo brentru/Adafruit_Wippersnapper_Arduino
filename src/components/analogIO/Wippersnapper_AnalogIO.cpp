@@ -177,7 +177,8 @@ void Wippersnapper_AnalogIO::disableAnalogInPin(int pin) {
 void Wippersnapper_AnalogIO::deinitAnalogPin(int pin) {
   disableAnalogInPin(pin);
   pinMode(pin, INPUT); // hi-z
-  WS_DEBUG_PRINT("Removed analog pin A"); WS_DEBUG_PRINTLN(pin);
+  WS_DEBUG_PRINT("Removed analog pin A");
+  WS_DEBUG_PRINTLN(pin);
 }
 
 /**********************************************************/
@@ -236,52 +237,52 @@ float Wippersnapper_AnalogIO::getPinValueVolts(int pin) {
 */
 /******************************************************************/
 bool Wippersnapper_AnalogIO::encodePinEvent(
-    uint8_t pinName,
-    wippersnapper_analogio_AnalogReadMode readMode,
+    uint8_t pinName, wippersnapper_analogio_AnalogReadMode readMode,
     uint16_t pinValRaw, float pinValVolts) {
-    // TODO: we are going to put this back later when we have the signal message format
-/*   // Create new signal message
-  wippersnapper_signal_v1_CreateSignalRequest outgoingSignalMsg =
-      wippersnapper_signal_v1_CreateSignalRequest_init_zero;
+  // TODO: we are going to put this back later when we have the signal message
+  // format
+  /*   // Create new signal message
+    wippersnapper_signal_v1_CreateSignalRequest outgoingSignalMsg =
+        wippersnapper_signal_v1_CreateSignalRequest_init_zero;
 
-  // Fill payload
-  outgoingSignalMsg.which_payload =
-      wippersnapper_signal_v1_CreateSignalRequest_pin_event_tag;
-  sprintf(outgoingSignalMsg.payload.pin_event.pin_name, "A%d", pinName);
+    // Fill payload
+    outgoingSignalMsg.which_payload =
+        wippersnapper_signal_v1_CreateSignalRequest_pin_event_tag;
+    sprintf(outgoingSignalMsg.payload.pin_event.pin_name, "A%d", pinName);
 
-  // Fill pinValue based on the analog read mode
-  char buffer[100];
-  if (readMode ==
-      wippersnapper_analogio_AnalogReadMode_ANALOG_READ_MODE_PIN_VALUE) {
-    sprintf(outgoingSignalMsg.payload.pin_event.pin_value, "%u", pinValRaw);
-    snprintf(buffer, 100, "[Pin] A%d read: %u\n", pinName, pinValRaw);
-  } else {
-    sprintf(outgoingSignalMsg.payload.pin_event.pin_value, "%0.3f",
-            pinValVolts);
-    snprintf(buffer, 100, "[Pin] A%d read: %0.2f\n", pinName, pinValVolts);
-  }
-// display analog pin read on terminal
-#ifdef USE_DISPLAY
-  WS._ui_helper->add_text_to_terminal(buffer);
-#endif
+    // Fill pinValue based on the analog read mode
+    char buffer[100];
+    if (readMode ==
+        wippersnapper_analogio_AnalogReadMode_ANALOG_READ_MODE_PIN_VALUE) {
+      sprintf(outgoingSignalMsg.payload.pin_event.pin_value, "%u", pinValRaw);
+      snprintf(buffer, 100, "[Pin] A%d read: %u\n", pinName, pinValRaw);
+    } else {
+      sprintf(outgoingSignalMsg.payload.pin_event.pin_value, "%0.3f",
+              pinValVolts);
+      snprintf(buffer, 100, "[Pin] A%d read: %0.2f\n", pinName, pinValVolts);
+    }
+  // display analog pin read on terminal
+  #ifdef USE_DISPLAY
+    WS._ui_helper->add_text_to_terminal(buffer);
+  #endif
 
-  // Encode signal message
-  pb_ostream_t stream =
-      pb_ostream_from_buffer(WS._buffer_outgoing, sizeof(WS._buffer_outgoing));
-  if (!pb_encode(&stream, wippersnapper_signal_v1_CreateSignalRequest_fields,
-                 &outgoingSignalMsg)) {
-    WS_DEBUG_PRINTLN("ERROR: Unable to encode signal message");
-    return false;
-  }
+    // Encode signal message
+    pb_ostream_t stream =
+        pb_ostream_from_buffer(WS._buffer_outgoing,
+  sizeof(WS._buffer_outgoing)); if (!pb_encode(&stream,
+  wippersnapper_signal_v1_CreateSignalRequest_fields, &outgoingSignalMsg)) {
+      WS_DEBUG_PRINTLN("ERROR: Unable to encode signal message");
+      return false;
+    }
 
-  // Publish out to IO
-  size_t msgSz;
-  pb_get_encoded_size(&msgSz,
-                      wippersnapper_signal_v1_CreateSignalRequest_fields,
-                      &outgoingSignalMsg);
-  WS_DEBUG_PRINT("Publishing pinEvent...");
-  WS.publish(WS._topic_signal_device, WS._buffer_outgoing, msgSz, 1);
-  WS_DEBUG_PRINTLN("Published!"); */
+    // Publish out to IO
+    size_t msgSz;
+    pb_get_encoded_size(&msgSz,
+                        wippersnapper_signal_v1_CreateSignalRequest_fields,
+                        &outgoingSignalMsg);
+    WS_DEBUG_PRINT("Publishing pinEvent...");
+    WS.publish(WS._topic_signal_device, WS._buffer_outgoing, msgSz, 1);
+    WS_DEBUG_PRINTLN("Published!"); */
 
   return true;
 }

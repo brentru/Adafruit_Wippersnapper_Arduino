@@ -56,7 +56,9 @@ Wippersnapper_DigitalGPIO::~Wippersnapper_DigitalGPIO() {
             The pin's period, in seconds.
 */
 /*******************************************************************************************************************************/
-void Wippersnapper_DigitalGPIO::initDigitalPin(wippersnapper_digitalio_DigitalIODirection direction, uint8_t pinName, float period) {
+void Wippersnapper_DigitalGPIO::initDigitalPin(
+    wippersnapper_digitalio_DigitalIODirection direction, uint8_t pinName,
+    float period) {
   if (direction ==
       wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_OUTPUT) {
 
@@ -85,11 +87,16 @@ void Wippersnapper_DigitalGPIO::initDigitalPin(wippersnapper_digitalio_DigitalIO
     pinMode(pinName, OUTPUT);
     digitalWrite(pinName, LOW); // initialize LOW
 #endif
-  } else if ((direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT) || (direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP) ) {
+  } else if (
+      (direction ==
+       wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT) ||
+      (direction ==
+       wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP)) {
     WS_DEBUG_PRINT("Configuring digital input pin on D");
     WS_DEBUG_PRINT(pinName);
 
-    if (direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP) {
+    if (direction ==
+        wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP) {
       WS_DEBUG_PRINTLN("with internal pull-up enabled");
       pinMode(pinName, INPUT_PULLUP);
     } else {
@@ -134,8 +141,7 @@ void Wippersnapper_DigitalGPIO::initDigitalPin(wippersnapper_digitalio_DigitalIO
 */
 /********************************************************************************************************************************/
 void Wippersnapper_DigitalGPIO::deinitDigitalPin(
-    wippersnapper_digitalio_DigitalIODirection direction,
-    uint8_t pinName) {
+    wippersnapper_digitalio_DigitalIODirection direction, uint8_t pinName) {
   WS_DEBUG_PRINT("Deinitializing digital pin ");
   WS_DEBUG_PRINTLN(pinName);
 
@@ -145,7 +151,10 @@ void Wippersnapper_DigitalGPIO::deinitDigitalPin(
   WS._ui_helper->add_text_to_terminal(buffer);
 #endif
 
-  if ((direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT) || (direction == wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP) ) {
+  if ((direction ==
+       wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT) ||
+      (direction ==
+       wippersnapper_digitalio_DigitalIODirection_DIGITAL_IO_DIRECTION_INPUT_PULL_UP)) {
     // de-allocate the pin within digital_input_pins[]
     for (int i = 0; i < _totalDigitalInputPins; i++) {
       if (_digital_input_pins[i].pinName == pinName) {
@@ -246,29 +255,28 @@ void Wippersnapper_DigitalGPIO::processDigitalInputs() {
 #endif
 
         // TODO Putback signal message packing and publishing
-/*         // Create new signal message
-        wippersnapper_signal_v1_CreateSignalRequest _outgoingSignalMsg =
-            wippersnapper_signal_v1_CreateSignalRequest_init_zero;
+        /*         // Create new signal message
+                wippersnapper_signal_v1_CreateSignalRequest _outgoingSignalMsg =
+                    wippersnapper_signal_v1_CreateSignalRequest_init_zero;
 
-        WS_DEBUG_PRINT("Encoding...")
-        // Create and encode a pinEvent message
-        if (!WS.encodePinEvent(&_outgoingSignalMsg,
-                               _digital_input_pins[i].pinName, pinVal)) {
-          WS_DEBUG_PRINTLN("ERROR: Unable to encode pinEvent");
-          break;
-        }
-        WS_DEBUG_PRINTLN("Encoded!")
+                WS_DEBUG_PRINT("Encoding...")
+                // Create and encode a pinEvent message
+                if (!WS.encodePinEvent(&_outgoingSignalMsg,
+                                       _digital_input_pins[i].pinName, pinVal))
+           { WS_DEBUG_PRINTLN("ERROR: Unable to encode pinEvent"); break;
+                }
+                WS_DEBUG_PRINTLN("Encoded!")
 
-        // Obtain size and only write out buffer to end
-        size_t msgSz;
-        pb_get_encoded_size(&msgSz,
-                            wippersnapper_signal_v1_CreateSignalRequest_fields,
-                            &_outgoingSignalMsg);
+                // Obtain size and only write out buffer to end
+                size_t msgSz;
+                pb_get_encoded_size(&msgSz,
+                                    wippersnapper_signal_v1_CreateSignalRequest_fields,
+                                    &_outgoingSignalMsg);
 
-        WS_DEBUG_PRINT("Publishing pinEvent...");
-        // TODO: add back publish()
-        //WS.publish(WS._topic_signal_device, WS._buffer_outgoing, msgSz, 1);
-        WS_DEBUG_PRINTLN("Published!"); */
+                WS_DEBUG_PRINT("Publishing pinEvent...");
+                // TODO: add back publish()
+                //WS.publish(WS._topic_signal_device, WS._buffer_outgoing,
+           msgSz, 1); WS_DEBUG_PRINTLN("Published!"); */
 
         // reset the digital pin
         _digital_input_pins[i].prvPeriod = curTime;

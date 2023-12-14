@@ -48,9 +48,8 @@ public:
   void setAref(float refVoltage);
   float getAref();
 
-  void initAnalogInputPin(
-      int pin, float period,
-      wippersnapper_analogio_AnalogReadMode analogReadMode);
+  void initAnalogInputPin(int pin, float period,
+                          wippersnapper_analogio_AnalogReadMode analogReadMode);
   void deinitAnalogPin(int pin);
   void disableAnalogInPin(int pin);
 
@@ -63,10 +62,9 @@ public:
   bool timerExpired(long currentTime, analogInputPin pin);
 
   void update();
-  bool encodePinEvent(
-      uint8_t pinName,
-      wippersnapper_analogio_AnalogReadMode readMode,
-      uint16_t pinValRaw = 0, float pinValVolts = 0.0);
+  bool encodePinEvent(uint8_t pinName,
+                      wippersnapper_analogio_AnalogReadMode readMode,
+                      uint16_t pinValRaw = 0, float pinValVolts = 0.0);
 
 private:
   float _aRef;           /*!< Hardware's reported voltage reference */
