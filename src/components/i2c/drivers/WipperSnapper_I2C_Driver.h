@@ -59,81 +59,81 @@ public:
   /*******************************************************************************/
   /*!
       @brief    Sets the sensor's period, provided a
-     wippersnapper_i2c_v1_SensorType.
+     wippersnapper_sensor_SensorType.
       @param    period The period for the sensor to return values within, in
      seconds.
       @param    sensorType The type of sensor device.
   */
   /*******************************************************************************/
   void setSensorPeriod(float period,
-                       wippersnapper_i2c_v1_SensorType sensorType) {
+                       wippersnapper_sensor_SensorType sensorType) {
     long sensorPeriod = (long)period * 1000;
 
     switch (sensorType) {
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_AMBIENT_TEMPERATURE:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_AMBIENT_TEMPERATURE:
       _tempSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_RELATIVE_HUMIDITY:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_RELATIVE_HUMIDITY:
       _humidSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_PRESSURE:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_PRESSURE:
       _pressureSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_CO2:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_CO2:
       _CO2SensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_ECO2:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_ECO2:
       _ECO2SensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_TVOC:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_TVOC:
       _TVOCSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_ALTITUDE:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_ALTITUDE:
       _altitudeSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_OBJECT_TEMPERATURE:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_OBJECT_TEMPERATURE:
       _objectTempSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_LIGHT:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_LIGHT:
       _lightSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_PM10_STD:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_PM10_STD:
       _PM10SensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_PM25_STD:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_PM25_STD:
       _PM25SensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_PM100_STD:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_PM100_STD:
       _PM100SensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_UNITLESS_PERCENT:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_UNITLESS_PERCENT:
       _unitlessPercentPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_VOLTAGE:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_VOLTAGE:
       _voltagePeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_CURRENT:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_CURRENT:
       _currentPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_PROXIMITY:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_PROXIMITY:
       _proximitySensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_RAW:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_RAW:
       _rawSensorPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_AMBIENT_TEMPERATURE_FAHRENHEIT:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_AMBIENT_TEMPERATURE_FAHRENHEIT:
       _ambientTempFPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_OBJECT_TEMPERATURE_FAHRENHEIT:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_OBJECT_TEMPERATURE_FAHRENHEIT:
       _objectTempFPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_GAS_RESISTANCE:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_GAS_RESISTANCE:
       _gasResistancePeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_NOX_INDEX:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_NOX_INDEX:
       _NOxIndexPeriod = sensorPeriod;
       break;
-    case wippersnapper_i2c_v1_SensorType_SENSOR_TYPE_VOC_INDEX:
+    case wippersnapper_sensor_SensorType_SENSOR_TYPE_VOC_INDEX:
       _VOCIndexPeriod = sensorPeriod;
       break;
     default:
@@ -145,14 +145,17 @@ public:
   /*!
       @brief    Uses an I2CDeviceInitRequest message to configure the sensors
                   belonging to the driver.
-      @param    msgDeviceInitReq
-                I2CDeviceInitRequest containing a list of I2C device properties.
+      @param    msgI2CInit
+                Message containing information required to initialize an i2c sensor.
   */
   /*******************************************************************************/
   void
-  configureDriver(wippersnapper_i2c_v1_I2CDeviceInitRequest *msgDeviceInitReq) {
+  configureDriver(wippersnapper_i2c_I2CInit *msgI2CInit) {
     int propertyIdx = 0; // contains the amount of i2c sensors in the
                          // msgDeviceInitReq to configure
+    // BRENT ON FRIDAY!!!!
+    // YOU WERE HERE, LOOKING AT WHY I2CINIT HAS SENSOR_TYPES AS A PB_CALLBACK
+    // RATHER THAN A FIXED AMOUNT OF SENSOR TYPES TO ITERATE THROUGH IN A LIST
     while (propertyIdx < msgDeviceInitReq->i2c_device_properties_count) {
       setSensorPeriod(
           msgDeviceInitReq->i2c_device_properties[propertyIdx].sensor_period,
