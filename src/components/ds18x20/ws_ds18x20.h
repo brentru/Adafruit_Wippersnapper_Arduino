@@ -30,9 +30,8 @@ struct ds18x20Obj {
       *dallasTempObj; ///< Pointer to a DallasTemperature sensor object
   DeviceAddress dallasTempAddr; ///< Temperature sensor's address
   int sensorPropertiesCount;    ///< Tracks # of sensorProperties
-  wippersnapper_i2c_v1_I2CDeviceSensorProperties sensorProperties[2] =
-      wippersnapper_i2c_v1_I2CDeviceSensorProperties_init_zero; ///< DS sensor
-                                                                ///< type(s)
+  wippersnapper_sensor_SensorEvent sensorProperties[2] =
+      wippersnapper_sensor_SensorEvent_init_zero; ///< DS sensor events(s)
   long sensorPeriodPrv; ///< Last time the sensor was polled, in millis
 };
 
@@ -50,10 +49,8 @@ public:
   ws_ds18x20();
   ~ws_ds18x20();
 
-  bool
-  addDS18x20(wippersnapper_ds18x20_v1_Ds18x20InitRequest *msgDs18x20InitReq);
-  void deleteDS18x20(
-      wippersnapper_ds18x20_v1_Ds18x20DeInitRequest *msgDS18x20DeinitReq);
+  bool addDS18x20(wippersnapper_ds18x20_Ds18x20Add *msgAdd);
+  void deleteDS18x20(wippersnapper_ds18x20_Ds18x20Remove *msgRemove);
   void update();
 
 private:
