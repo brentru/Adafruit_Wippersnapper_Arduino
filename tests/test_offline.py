@@ -21,7 +21,7 @@ def run_wokwi_cli(binary, timeout, scenario, diagram):
     return result
 
 def test_invalid_json():
-    result = run_wokwi_cli(f"bin/offline/firmware.elf", "120000", f"scenarios/offline/test-invalid-json.scenario.yaml", f"diagrams/offline.json")
+    result = run_wokwi_cli(f"bin/offline/firmware.elf", "120000", f"scenarios/offline/test-invalid-json.scenario.yaml", f"tests/diagrams/offline.json")
     assert result.returncode == 0
 
 
