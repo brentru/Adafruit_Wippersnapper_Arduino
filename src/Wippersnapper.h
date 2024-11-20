@@ -39,73 +39,10 @@
 // Wippersnapper API Helpers
 #include "Wippersnapper_Boards.h"
 #include "components/statusLED/Wippersnapper_StatusLED.h"
+#include "helpers/ws_helper_macros.h"
+#include "helpers/ws_helper_status.h"
+#include "helpers/ws_helper_topics.h"
 #include "provisioning/ConfigJson.h"
-
-#define WS_DEBUG          ///< Define to enable debugging to serial terminal
-#define WS_PRINTER Serial ///< Where debug messages will be printed
-
-// Define actual debug output functions when necessary.
-#ifdef WS_DEBUG
-#define WS_DEBUG_PRINT(...)                                                    \
-  { WS_PRINTER.print(__VA_ARGS__); } ///< Prints debug output.
-#define WS_DEBUG_PRINTLN(...)                                                  \
-  { WS_PRINTER.println(__VA_ARGS__); } ///< Prints line from debug output.
-#define WS_DEBUG_PRINTHEX(...)                                                 \
-  { WS_PRINTER.print(__VA_ARGS__, HEX); } ///< Prints debug output.
-#else
-#define WS_DEBUG_PRINT(...)                                                    \
-  {} ///< Prints debug output
-#define WS_DEBUG_PRINTLN(...)                                                  \
-  {} ///< Prints line from debug output.
-#endif
-
-#define WS_DELAY_WITH_WDT(timeout)                                             \
-  {                                                                            \
-    unsigned long start = millis();                                            \
-    while (millis() - start < timeout) {                                       \
-      delay(10);                                                               \
-      yield();                                                                 \
-      feedWDT();                                                               \
-      if (millis() < start) {                                                  \
-        start = millis(); /* if rollover */                                    \
-      }                                                                        \
-    }                                                                          \
-  } ///< Delay function
-
-/**************************************************************************/
-/*!
-    @brief  Retry a function until a condition is met or a timeout is reached.
-    @param  func
-            The function to retry.
-    @param  result_type
-            The type of the result of the function.
-    @param  result_var
-            The variable to store the last result of the function.
-    @param  condition
-            The condition to check the result against.
-    @param  timeout
-            The maximum time to retry the function.
-    @param  interval
-            The time to wait between retries.
-    @param  ...
-            The arguments to pass to the function.
-*/
-/**************************************************************************/
-#define RETRY_FUNCTION_UNTIL_TIMEOUT(func, result_type, result_var, condition, \
-                                     timeout, interval, ...)                   \
-  {                                                                            \
-    unsigned long startTime = millis();                                        \
-    while (millis() - startTime < timeout) {                                   \
-      result_type result_var = func(__VA_ARGS__);                              \
-      if (condition(result_var)) {                                             \
-        break;                                                                 \
-      }                                                                        \
-      if (startTime > millis()) {                                              \
-        startTime = millis(); /* if rollover */                                \
-      }                                                                        \
-      WS_DELAY_WITH_WDT(interval);                                             \
-    }                                                                          \
-  } ///< Retry a function until a condition is met or a timeout is reached.
 
 // Wippersnapper pb helpers
 #include <nanopb/ws_pb_helpers.h>
@@ -127,7 +64,6 @@
 #include "display/ws_display_ui_helper.h"
 #endif
 
-#include "components/ds18x20/ws_ds18x20.h"
 #include "components/pixels/ws_pixels.h"
 #include "components/pwm/ws_pwm.h"
 #include "components/servo/ws_servo.h"
@@ -143,76 +79,6 @@
 
 #define WS_VERSION                                                             \
   "1.0.0-beta.93" ///< WipperSnapper app. version (semver-formatted)
-
-// Reserved Adafruit IO MQTT topics
-#define TOPIC_IO_THROTTLE "/throttle" ///< Adafruit IO Throttle MQTT Topic
-#define TOPIC_IO_ERRORS "/errors"     ///< Adafruit IO Error MQTT Topic
-
-// Reserved Wippersnapper topics
-#define TOPIC_WS "/wprsnpr/"      ///< WipperSnapper topic
-#define TOPIC_INFO "/info/"       ///< Registration sub-topic
-#define TOPIC_SIGNALS "/signals/" ///< Signals sub-topic
-#define TOPIC_I2C "/i2c"          ///< I2C sub-topic
-#define MQTT_TOPIC_PIXELS_DEVICE                                               \
-  "/signals/device/pixel" ///< Pixels device->broker topic
-#define MQTT_TOPIC_PIXELS_BROKER                                               \
-  "/signals/broker/pixel" ///< Pixels broker->device topic
-
-/** Defines the Adafruit IO connection status */
-typedef enum {
-  WS_IDLE = 0,               // Waiting for connection establishement
-  WS_NET_DISCONNECTED = 1,   // Network disconnected
-  WS_DISCONNECTED = 2,       // Disconnected from Adafruit IO
-  WS_FINGERPRINT_UNKOWN = 3, // Unknown WS_SSL_FINGERPRINT
-
-  WS_NET_CONNECT_FAILED = 10,  // Failed to connect to network
-  WS_CONNECT_FAILED = 11,      // Failed to connect to Adafruit IO
-  WS_FINGERPRINT_INVALID = 12, // Unknown WS_SSL_FINGERPRINT
-  WS_AUTH_FAILED = 13, // Invalid Adafruit IO login credentials provided.
-  WS_SSID_INVALID =
-      14, // SSID is "" or otherwise invalid, connection not attempted
-
-  WS_NET_CONNECTED = 20,           // Connected to Adafruit IO
-  WS_CONNECTED = 21,               // Connected to network
-  WS_CONNECTED_INSECURE = 22,      // Insecurely (non-SSL) connected to network
-  WS_FINGERPRINT_UNSUPPORTED = 23, // Unsupported WS_SSL_FINGERPRINT
-  WS_FINGERPRINT_VALID = 24,       // Valid WS_SSL_FINGERPRINT
-  WS_BOARD_DESC_INVALID = 25,      // Unable to send board description
-  WS_BOARD_RESYNC_FAILED = 26      // Board sync failure
-} ws_status_t;
-
-/** Defines the Adafruit IO MQTT broker's connection return codes */
-typedef enum {
-  WS_MQTT_CONNECTED = 0,           // Connected
-  WS_MQTT_INVALID_PROTOCOL = 1,    // Invalid mqtt protocol
-  WS_MQTT_INVALID_CID = 2,         // Client id rejected
-  WS_MQTT_SERVICE_UNAVALIABLE = 3, // Malformed user/pass
-  WS_MQTT_INVALID_USER_PASS = 4,   // Unauthorized access to resource
-  WS_MQTT_UNAUTHORIZED = 5,        // MQTT service unavailable
-  WS_MQTT_THROTTLED = 6,           // Account throttled
-  WS_MQTT_BANNED = 7               // Account banned
-} ws_mqtt_status_t;
-
-/** Defines the Wippersnapper client's hardware registration status */
-typedef enum {
-  WS_BOARD_DEF_IDLE,
-  WS_BOARD_DEF_SEND_FAILED,
-  WS_BOARD_DEF_SENT,
-  WS_BOARD_DEF_OK,
-  WS_BOARD_DEF_INVALID,
-  WS_BOARD_DEF_UNSPECIFIED
-} ws_board_status_t;
-
-/** Defines the Wippersnapper client's network status */
-typedef enum {
-  FSM_NET_IDLE,
-  FSM_NET_CONNECTED,
-  FSM_MQTT_CONNECTED,
-  FSM_NET_CHECK_MQTT,
-  FSM_NET_CHECK_NETWORK,
-  FSM_NET_ESTABLISH_NETWORK,
-  FSM_NET_ESTABLISH_MQTT,
-} fsm_net_t;
 
 #define WS_WDT_TIMEOUT 60000       ///< WDT timeout
 #define WS_MAX_ALT_WIFI_NETWORKS 3 ///< Maximum number of alternative networks
@@ -237,7 +103,6 @@ class ws_ledc;
 class WipperSnapper_Component_I2C;
 class ws_servo;
 class ws_pwm;
-class ws_ds18x20;
 class ws_pixels;
 class ws_uart;
 
@@ -360,7 +225,6 @@ public:
   ws_pixels *_ws_pixelsComponent; ///< ptr to instance of ws_pixels class
   ws_pwm *_pwmComponent;          ///< Instance of pwm class
   ws_servo *_servoComponent;      ///< Instance of servo class
-  ws_ds18x20 *_ds18x20Component;  ///< Instance of DS18x20 class
   ws_uart *_uartComponent;        ///< Instance of UART class
 
   // TODO: does this really need to be global?
