@@ -52,13 +52,7 @@ Wippersnapper_V2::Wippersnapper_V2() {
   // Initialize controller classes
   WsV2.digital_io_controller = new DigitalIOController();
   WsV2.analogio_controller = new AnalogIOController();
-  WsV2._ds18x20_controller = new DS18X20Controller();
-  WsV2._gps_controller = new GPSController();
   WsV2._i2c_controller = new I2cController();
-  WsV2._uart_controller = new UARTController();
-  WsV2._pixels_controller = new PixelsController();
-  WsV2._pwm_controller = new PWMController();
-  WsV2._servo_controller = new ServoController();
 };
 
 /*!
@@ -343,18 +337,6 @@ bool cbDecodeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
       return false;
     }
     break;
-  case wippersnapper_signal_BrokerToDevice_ds18x20_add_tag:
-    WS_DEBUG_PRINTLN("-> DS18X20 Add Message Type");
-    if (!WsV2._ds18x20_controller->Handle_Ds18x20Add(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_ds18x20_remove_tag:
-    WS_DEBUG_PRINTLN("-> DS18X20 Remove Message Type");
-    if (!WsV2._ds18x20_controller->Handle_Ds18x20Remove(stream)) {
-      return false;
-    }
-    break;
   case wippersnapper_signal_BrokerToDevice_i2c_device_add_replace_tag:
     WS_DEBUG_PRINTLN("-> I2C Device Add/Replace Message Type");
     if (!WsV2._i2c_controller->Handle_I2cDeviceAddOrReplace(stream)) {
@@ -376,84 +358,6 @@ bool cbDecodeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
   case wippersnapper_signal_BrokerToDevice_i2c_device_output_write_tag:
     WS_DEBUG_PRINTLN("-> I2C Device Output Write Message Type");
     if (!WsV2._i2c_controller->Handle_I2cDeviceOutputWrite(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_pixels_add_tag:
-    WS_DEBUG_PRINTLN("-> Pixels Add Message Type");
-    if (!WsV2._pixels_controller->Handle_Pixels_Add(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_pixels_remove_tag:
-    WS_DEBUG_PRINTLN("-> Pixels Remove Message Type");
-    if (!WsV2._pixels_controller->Handle_Pixels_Remove(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_pixels_write_tag:
-    WS_DEBUG_PRINTLN("-> Pixels Write Message Type");
-    if (!WsV2._pixels_controller->Handle_Pixels_Write(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_pwm_add_tag:
-    WS_DEBUG_PRINTLN("-> PWM Add Message Type");
-    if (!WsV2._pwm_controller->Handle_PWM_Add(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_pwm_write_duty_tag:
-    WS_DEBUG_PRINTLN("-> PWM Write Duty Cycle Message Type");
-    if (!WsV2._pwm_controller->Handle_PWM_Write_DutyCycle(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_pwm_write_freq_tag:
-    WS_DEBUG_PRINTLN("-> PWM Write Frequency Message Type");
-    if (!WsV2._pwm_controller->Handle_PWM_Write_Frequency(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_pwm_remove_tag:
-    WS_DEBUG_PRINTLN("-> PWM Remove Message Type");
-    if (!WsV2._pwm_controller->Handle_PWM_Remove(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_servo_add_tag:
-    WS_DEBUG_PRINTLN("-> Servo Add Message Type");
-    if (!WsV2._servo_controller->Handle_Servo_Add(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_servo_write_tag:
-    WS_DEBUG_PRINTLN("-> Servo Write Message Type");
-    if (!WsV2._servo_controller->Handle_Servo_Write(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_servo_remove_tag:
-    WS_DEBUG_PRINTLN("-> Servo Remove Message Type");
-    if (!WsV2._servo_controller->Handle_Servo_Remove(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_uart_add_tag:
-    WS_DEBUG_PRINTLN("-> UART Add Message Type");
-    if (!WsV2._uart_controller->Handle_UartAdd(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_uart_remove_tag:
-    WS_DEBUG_PRINTLN("-> UART Remove Message Type");
-    if (!WsV2._uart_controller->Handle_UartRemove(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_uart_write_tag:
-    WS_DEBUG_PRINTLN("-> UART Write Message Type");
-    if (!WsV2._uart_controller->Handle_UartWrite(stream)) {
       return false;
     }
     break;
@@ -989,56 +893,6 @@ bool Wippersnapper_V2::PublishSignal(pb_size_t which_payload, void *payload) {
     MsgSignal.payload.analogio_event =
         *(wippersnapper_analogio_AnalogIOEvent *)payload;
     break;
-  case wippersnapper_signal_DeviceToBroker_ds18x20_added_tag:
-    WS_DEBUG_PRINTLN("DS18X20Added");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_ds18x20_added_tag;
-    MsgSignal.payload.ds18x20_added =
-        *(wippersnapper_ds18x20_Ds18x20Added *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_ds18x20_event_tag:
-    WS_DEBUG_PRINTLN("DS18X20Event");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_ds18x20_event_tag;
-    MsgSignal.payload.ds18x20_event =
-        *(wippersnapper_ds18x20_Ds18x20Event *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_pixels_added_tag:
-    WS_DEBUG_PRINTLN("PixelsAdded");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_pixels_added_tag;
-    MsgSignal.payload.pixels_added =
-        *(wippersnapper_pixels_PixelsAdded *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_pwm_added_tag:
-    WS_DEBUG_PRINTLN("PWMAdded");
-    MsgSignal.which_payload = wippersnapper_signal_DeviceToBroker_pwm_added_tag;
-    MsgSignal.payload.pwm_added = *(wippersnapper_pwm_PWMAdded *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_servo_added_tag:
-    WS_DEBUG_PRINTLN("ServoAdded");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_servo_added_tag;
-    MsgSignal.payload.servo_added = *(wippersnapper_servo_ServoAdded *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_uart_added_tag:
-    WS_DEBUG_PRINTLN("UARTAdded");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_uart_added_tag;
-    MsgSignal.payload.uart_added = *(wippersnapper_uart_UartAdded *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_uart_input_event_tag:
-    WS_DEBUG_PRINTLN("UARTInputEvent");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_uart_input_event_tag;
-    MsgSignal.payload.uart_input_event =
-        *(wippersnapper_uart_UartInputEvent *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_gps_event_tag:
-    WS_DEBUG_PRINTLN("GPSEvent");
-    MsgSignal.which_payload = wippersnapper_signal_DeviceToBroker_gps_event_tag;
-    MsgSignal.payload.gps_event = *(wippersnapper_gps_GPSEvent *)payload;
-    break;
   default:
     WS_DEBUG_PRINTLN("ERROR: Invalid signal payload type, bailing out!");
     return false;
@@ -1369,18 +1223,6 @@ ws_status_t Wippersnapper_V2::run() {
 
   // Process all analog inputs
   WsV2.analogio_controller->update();
-
-  // Process all DS18x20 sensor events
-  WsV2._ds18x20_controller->update();
-
-  // Process I2C driver events
-  WsV2._i2c_controller->update();
-
-  // Process UART driver events
-  WsV2._uart_controller->update();
-
-  // Process GPS controller events
-  WsV2._gps_controller->update();
 
   return WS_NET_CONNECTED; // TODO: Make this funcn void!
 }

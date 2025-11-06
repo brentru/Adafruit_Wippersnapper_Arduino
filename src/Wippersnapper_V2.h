@@ -98,14 +98,7 @@
 #include "components/analogIO/controller.h"
 #include "components/checkin/model.h"
 #include "components/digitalIO/controller.h"
-#include "components/ds18x20/controller.h"
-#include "components/gps/controller.h"
 #include "components/i2c/controller.h"
-#include "components/pixels/controller.h"
-#include "components/pwm/controller.h"
-#include "components/sensor/model.h"
-#include "components/servo/controller.h"
-#include "components/uart/controller.h"
 
 // Display
 #ifdef USE_DISPLAY
@@ -143,13 +136,7 @@ class CheckinModel;
 class SensorModel;
 class DigitalIOController;
 class AnalogIOController;
-class DS18X20Controller;
-class GPSController;
 class I2cController;
-class PixelsController;
-class PWMController;
-class ServoController;
-class UARTController;
 
 /*!
     @brief  Class that provides storage and functions for the Adafruit IO
@@ -242,16 +229,7 @@ public:
       nullptr; ///< Instance of DigitalIO controller class
   AnalogIOController *analogio_controller =
       nullptr; ///< Instance of AnalogIO controller
-  DS18X20Controller *_ds18x20_controller =
-      nullptr;                              ///< Instance of DS18X20 controller
-  GPSController *_gps_controller = nullptr; ///< Instance of GPS controller
   I2cController *_i2c_controller = nullptr; ///< Instance of I2C controller
-  PixelsController *_pixels_controller =
-      nullptr;                              ///< Instance of Pixels controller
-  PWMController *_pwm_controller = nullptr; ///< Instance of PWM controller
-  ServoController *_servo_controller =
-      nullptr; ///< Instance of Servo controller
-  UARTController *_uart_controller = nullptr; ///< Instance of UART controller
 
   // TODO: does this really need to be global?
   uint8_t _macAddrV2[6];  /*!< Unique network iface identifier */
@@ -272,10 +250,6 @@ public:
   int throttleTimeV2;      /*!< Total amount of time to throttle the device, in
                             milliseconds. */
 
-  // enable LEDC if esp32
-  // #ifdef ARDUINO_ARCH_ESP32
-  // ws_ledc *_ledcV2 = nullptr; ///< Pointer to LEDC object
-  // #endif
   bool got_checkin_response; ///< True if a checkin response was received, False
                              ///< otherwise.
   std::vector<std::vector<uint8_t>>

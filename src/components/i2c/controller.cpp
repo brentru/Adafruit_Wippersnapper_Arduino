@@ -954,7 +954,6 @@ bool I2cController::Handle_I2cDeviceAddOrReplace(pb_istream_t *stream) {
   bool did_init = false;
   drvBase *drv = nullptr;
   drvOutputBase *drv_out = nullptr;
-  GPSController *drv_uart_gps = nullptr;
 
   if (is_output) {
     WS_DEBUG_PRINT("[i2c] Creating an I2C output driver...");
@@ -965,17 +964,6 @@ bool I2cController::Handle_I2cDeviceAddOrReplace(pb_istream_t *stream) {
       did_init = true;
     }
     WS_DEBUG_PRINTLN("OK!");
-  } else if (is_gps) {
-    WS_DEBUG_PRINT("[i2c] Creating a GPS driver...");
-    if (!WsV2._gps_controller->AddGPS(bus, device_descriptor.i2c_device_address, &_i2c_model->GetI2cDeviceAddOrReplaceMsg()->gps_config)) {
-      did_init = false;
-      WS_DEBUG_PRINTLN("FAILURE!");
-    } else {
-      did_init = true;
-      WS_DEBUG_PRINTLN("OK!");
-      // TODO: We are doing an early-out here and should publish back to IO!
-      return true;
-    }
   } else {
     drv = CreateI2cSensorDrv(device_name, bus,
                              device_descriptor.i2c_device_address,
