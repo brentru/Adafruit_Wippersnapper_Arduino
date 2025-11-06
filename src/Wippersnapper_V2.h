@@ -99,6 +99,8 @@
 #include "components/checkin/model.h"
 #include "components/digitalIO/controller.h"
 #include "components/i2c/controller.h"
+#include "components/sensor/model.h"
+
 
 // Display
 #ifdef USE_DISPLAY
