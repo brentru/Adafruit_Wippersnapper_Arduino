@@ -39,13 +39,10 @@ RegisterModel::~RegisterModel() {
     @param  device_identifier
             Device's unique identifier.
 */
-void RegisterModel::CreateRegisterAddRequest(const char *device_identifier) {
-  strncpy(_device_identifier, device_identifier, sizeof(_device_identifier) - 1);
-  _device_identifier[sizeof(_device_identifier) - 1] = '\0';
-  
-  // Set up the callback for encoding the device_identifier
-  _RegisterAdd.device_identifier.funcs.encode = &encode_device_identifier_callback;
-  _RegisterAdd.device_identifier.arg = _device_identifier;
+void RegisterModel::CreateRegisterAddRequest(const char* device_identifier) {  
+  // Copy device identifier directly to the char array
+  strncpy(_RegisterAdd.device_identifier, device_identifier, sizeof(_RegisterAdd.device_identifier) - 1);
+  _RegisterAdd.device_identifier[sizeof(_RegisterAdd.device_identifier) - 1] = '\0'; // Ensure null termination
 }
 
 /*!
@@ -57,7 +54,7 @@ bool RegisterModel::EncodeRegisterAddRequest() {
   // Obtain size of the message
   size_t registerAddRequestSz;
   if (!pb_get_encoded_size(&registerAddRequestSz,
-                           register_v1_gpio_RegisterAdd_fields,
+                           esmp_v1_register_RegisterAdd_fields,
                            &_RegisterAdd))
     return false;
 
@@ -68,7 +65,7 @@ bool RegisterModel::EncodeRegisterAddRequest() {
   pb_ostream_t msg_stream = pb_ostream_from_buffer(buf, sizeof(buf));
 
   // Encode the message
-  return pb_encode(&msg_stream, register_v1_gpio_RegisterAdd_fields, &_RegisterAdd);
+  return pb_encode(&msg_stream, esmp_v1_register_RegisterAdd_fields, &_RegisterAdd);
 }
 
 /*!
@@ -78,15 +75,17 @@ bool RegisterModel::EncodeRegisterAddRequest() {
     @returns True if the message was successfully decoded,
              False otherwise.
 */
-bool RegisterModel::DecodeRegisterAddedResponse(pb_istream_t *stream) {
-  memset(&_RegisterAdded, 0, sizeof(_RegisterAdded));
-  memset(_device_identifier, 0, sizeof(_device_identifier));
+bool RegisterModel::DecodeRegisterAddedResponse(pb_istream_t* stream) {
+  // Decode the RegisterAdded message
+  if (!pb_decode(stream, esmp_v1_register_RegisterAdded_fields, &_RegisterAdded)) {
+    WS_DEBUG_PRINTLN("ERROR: Unable to decode RegisterAdded message!");
+    return false;
+  }
   
-  // Set up the callback for decoding the device_identifier
-  _RegisterAdded.device_identifier.funcs.decode = &decode_device_identifier_callback;
-  _RegisterAdded.device_identifier.arg = _device_identifier;
+  WS_DEBUG_PRINT("Device identifier: ");
+  WS_DEBUG_PRINTLN(_RegisterAdded.device_identifier);
   
-  return pb_decode(stream, esmp_v1_register_RegisterAdded_fields, &_RegisterAdded);
+  return true;
 }
 
 /*!
