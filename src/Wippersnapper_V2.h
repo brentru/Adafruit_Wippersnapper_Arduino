@@ -1,15 +1,10 @@
 /*!
  * @file Wippersnapper_V2.h
  *
- * This is the documentation for Adafruit's Wippersnapper firmware for the
- * Arduino platform. It is designed specifically to work with
- * Adafruit IO Wippersnapper IoT platform.
+ * Minimal version of Adafruit's WipperSnapper firmware
+ * designed for ESMP v1 protocol thesis demo.
  *
- * Adafruit invests time and resources providing this open source code,
- * please support Adafruit and open-source hardware by purchasing
- * products from Adafruit!
- *
- * @copyright Copyright (c) Brent Rubell 2020-2024 for Adafruit Industries.
+ * @copyright Copyright (c) Brent Rubell 2025
  *
  * BSD license, all text here must be included in any redistribution.
  */
@@ -99,14 +94,7 @@
 #include "components/register/model.h"
 #include "components/digitalIO/controller.h"
 #include "components/i2c/controller.h"
-#include "components/sensor/model.h"
 
-
-// Display
-#ifdef USE_DISPLAY
-#include "display/ws_display_driver.h"
-#include "display/ws_display_ui_helper.h"
-#endif
 
 #include "provisioning/ConfigJson.h"
 #include "provisioning/sdcard/ws_sdcard.h"
@@ -130,15 +118,10 @@
 class Wippersnapper_FS;
 class WipperSnapper_LittleFS;
 class ws_sdcard;
-#ifdef USE_DISPLAY
-class ws_display_driver;
-class ws_display_ui_helper;
-#endif
 class RegisterModel;
 class SensorModel;
 class DigitalIOController;
 class AnalogIOController;
-class I2cController;
 
 /*!
     @brief  Class that provides storage and functions for the Adafruit IO
@@ -178,10 +161,10 @@ public:
 
   // Generators for device UID and MQTT topics
   bool generateDeviceUID();
-  bool generateWSTopics();
+  bool generateMQTTTopics();
 
   // High-level MQTT Publish
-  bool PublishSignal(pb_size_t which_payload, void *payload);
+  bool PublishSignalResponse(pb_size_t which_payload, void *payload);
 
   // Register API
   bool CreateRegisterRequest();
@@ -218,11 +201,6 @@ public:
   WipperSnapper_LittleFS
       *_littleFSV2;     ///< Instance of LittleFS Filesystem (non-native USB)
   ws_sdcard *_sdCardV2; ///< Instance of SD card class
-#ifdef USE_DISPLAY
-  ws_display_driver *_displayV2 = nullptr; ///< Instance of display driver class
-  ws_display_ui_helper *_ui_helperV2 =
-      nullptr; ///< Instance of display UI helper class
-#endif
 
   // API v2 Components
   RegisterModel *RegisterModel = nullptr; ///< Instance of RegisterModel class
@@ -231,7 +209,6 @@ public:
       nullptr; ///< Instance of DigitalIO controller class
   AnalogIOController *analogio_controller =
       nullptr; ///< Instance of AnalogIO controller
-  I2cController *_i2c_controller = nullptr; ///< Instance of I2C controller
 
   // TODO: does this really need to be global?
   uint8_t _macAddrV2[6];  /*!< Unique network iface identifier */

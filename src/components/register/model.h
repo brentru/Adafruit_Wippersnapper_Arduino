@@ -26,7 +26,7 @@ public:
   ~RegisterModel();
   // Request Message
   void CreateRegisterAddRequest(const char *device_identifier);
-  bool EncodeRegisterAddRequest(uint8_t *buf, size_t bufSize, size_t *msgSize);
+  bool EncodeRegisterAddRequest();
   register_v1_gpio_RegisterAdd *getRegisterAddRequest();
   // Response Message
   bool DecodeRegisterAddedResponse(pb_istream_t *stream);

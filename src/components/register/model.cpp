@@ -50,27 +50,25 @@ void RegisterModel::CreateRegisterAddRequest(const char *device_identifier) {
 
 /*!
     @brief  Encodes a RegisterAdd message
-    @param  buf
-            Buffer to write encoded message to.
-    @param  bufSize
-            Size of the buffer.
-    @param  msgSize
-            Pointer to store the actual encoded message size.
     @returns True if the message was successfully encoded,
              False otherwise.
 */
-bool RegisterModel::EncodeRegisterAddRequest(uint8_t *buf, size_t bufSize, size_t *msgSize) {
+bool RegisterModel::EncodeRegisterAddRequest() {
+  // Obtain size of the message
+  size_t registerAddRequestSz;
+  if (!pb_get_encoded_size(&registerAddRequestSz,
+                           register_v1_gpio_RegisterAdd_fields,
+                           &_RegisterAdd))
+    return false;
+
+  // Create a buffer for holding the message
+  uint8_t buf[registerAddRequestSz];
+
   // Create a stream that will write to buf
-  pb_ostream_t msg_stream = pb_ostream_from_buffer(buf, bufSize);
-  
+  pb_ostream_t msg_stream = pb_ostream_from_buffer(buf, sizeof(buf));
+
   // Encode the message
-  bool status = pb_encode(&msg_stream, register_v1_gpio_RegisterAdd_fields, &_RegisterAdd);
-  
-  if (status && msgSize) {
-    *msgSize = msg_stream.bytes_written;
-  }
-  
-  return status;
+  return pb_encode(&msg_stream, register_v1_gpio_RegisterAdd_fields, &_RegisterAdd);
 }
 
 /*!

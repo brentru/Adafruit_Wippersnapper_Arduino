@@ -295,7 +295,7 @@ bool DigitalIOController::EncodePublishPinEvent(uint8_t pin_name,
     }
 
     // Publish the DigitalIOEvent message to the broker
-    if (!WsV2.PublishSignal(
+    if (!WsV2.PublishSignalResponse(
             wippersnapper_signal_DeviceToBroker_digitalio_event_tag,
             _dio_model->GetDigitalIOEventMsg())) {
       WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to publish event message, "

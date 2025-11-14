@@ -48,6 +48,7 @@ Wippersnapper_V2::Wippersnapper_V2() {
 
   // Initialize model classes
   WsV2.sensorModel = new SensorModel();
+  WsV2.RegisterModel = new RegisterModel();
 
   // Initialize controller classes
   WsV2.digital_io_controller = new DigitalIOController();
@@ -78,47 +79,6 @@ void Wippersnapper_V2::provision() {
   _littleFSV2 = new WipperSnapper_LittleFS();
 #endif
 
-// Determine if app is in SDLogger mode
-#ifdef USE_TINYUSB
-  _fileSystemV2->GetSDCSPin();
-#elif defined(USE_LITTLEFS)
-  _littleFSV2->GetSDCSPin();
-#elif defined(OFFLINE_MODE_WOKWI)
-  WsV2.pin_sd_cs = 15;
-#endif
-  WsV2._sdCardV2 = new ws_sdcard();
-  if (WsV2._sdCardV2->isSDCardInitialized()) {
-    return; // SD card initialized, cede control back to loop()
-  } else {
-#ifdef BUILD_OFFLINE_ONLY
-    haltErrorV2("SD initialization failed.\nDo not reformat the card!\nIs the "
-                "card correctly inserted?\nIs there a wiring/soldering "
-                "problem\nIs the config.json file malformed?");
-#endif
-    // SD card not initialized, so just continue with online-mode provisioning
-  }
-
-#ifdef USE_DISPLAY
-  // Initialize the display
-  displayConfig config;
-  WsV2._fileSystemV2->parseDisplayConfig(config);
-  WsV2._displayV2 = new ws_display_driver(config);
-  // Begin display
-  if (!WsV2._displayV2->begin()) {
-    WS_DEBUG_PRINTLN("Unable to enable display driver and LVGL");
-    haltErrorV2("Unable to enable display driver, please check the json "
-                "configuration!");
-  }
-
-  WsV2._displayV2->enableLogging();
-  ReleaseStatusPixel(); // don't use status LED if we are using the display
-  // UI Setup
-  WsV2._ui_helperV2 = new ws_display_ui_helper(WsV2._displayV2);
-  WsV2._ui_helperV2->set_bg_black();
-  WsV2._ui_helperV2->show_scr_load();
-  WsV2._ui_helperV2->set_label_status("Validating Credentials...");
-#endif
-
 #ifdef USE_TINYUSB
   _fileSystemV2->parseSecrets();
 #elif defined(USE_LITTLEFS)
@@ -132,10 +92,6 @@ void Wippersnapper_V2::provision() {
   // Set device's wireless credentials
   set_ssid_pass();
 
-#ifdef USE_DISPLAY
-  WsV2._ui_helperV2->set_label_status("");
-  WsV2._ui_helperV2->set_load_bar_icon_complete(loadBarIconFile);
-#endif
 }
 
 /*!
@@ -243,6 +199,31 @@ void Wippersnapper_V2::set_user_key() {
 }
 
 /*!
+    @brief    Creates, fills, encodes and publishes a checkin request
+              message to the broker.
+    @returns  True if the Checkin request message published successfully,
+              False otherwise.
+*/
+bool Wippersnapper_V2::CreateRegisterRequest() {
+  WS_DEBUG_PRINT("Creating the Register message with UID: ");
+  WS_DEBUG_PRINTLN(WsV2.sUIDV2);
+  WsV2.RegisterModel->CreateRegisterAddRequest(WsV2.sUIDV2);
+  WS_DEBUG_PRINTLN("Created!");
+
+  WS_DEBUG_PRINT("Encoding the Register message...");
+  if (!WsV2.RegisterModel->EncodeRegisterAddRequest())
+    return false;
+  WS_DEBUG_PRINTLN("Encoded!");
+
+  WS_DEBUG_PRINT("Publishing Register Request...");
+  if (!PublishSignalResponse(esmp_v1_SignalRequest_register_add_tag, WsV2.RegisterModel->getRegisterAddRequest()))
+    return false;
+  WS_DEBUG_PRINTLN("Published!");
+
+  return true;
+}
+
+/*!
     @brief    Handles a Register Response message and initializes the
               device's GPIO classes.
     @param    stream
@@ -264,9 +245,7 @@ bool handleRegisterResponse(pb_istream_t *stream) {
   WsV2.digital_io_controller->SetMaxDigitalPins(
       WsV2.RegisterModel->getDigitalPinCount());
 
-  // For now, use a default reference voltage of 3.3V
-  // TODO: Add reference voltage to ESMP protocol if needed
-  WsV2.analogio_controller->SetRefVoltage(3.3f);
+  WsV2.analogio_controller->SetRefVoltage(3.3);
   WsV2.analogio_controller->SetTotalAnalogPins(
       WsV2.RegisterModel->getAnalogPinCount());
 
@@ -293,67 +272,12 @@ bool cbDecodeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
   (void)arg; // marking unused parameters to avoid compiler warning
 
   switch (field->tag) {
-  case wippersnapper_signal_BrokerToDevice_checkin_response_tag:
-    WS_DEBUG_PRINTLN("-> Checkin Response Message Type");
-    WS_DEBUG_PRINT("Handling Checkin Response...");
-    if (!handleCheckinResponse(stream)) {
+  case esmp_v1_SignalResponse_register_added_tag:
+    WS_DEBUG_PRINTLN("-> Register Added Response");
+    if (!handleRegisterResponse(stream)) {
       return false;
     }
     WS_DEBUG_PRINTLN("Handled!");
-    break;
-  case wippersnapper_signal_BrokerToDevice_digitalio_add_tag:
-    WS_DEBUG_PRINTLN("-> DigitalIO Add Message Type");
-    if (!WsV2.digital_io_controller->Handle_DigitalIO_Add(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_digitalio_remove_tag:
-    WS_DEBUG_PRINTLN("-> DigitalIO Remove Message Type");
-    if (!WsV2.digital_io_controller->Handle_DigitalIO_Remove(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_digitalio_write_tag:
-    WS_DEBUG_PRINTLN("-> DigitalIO Write Message Type");
-    if (!WsV2.digital_io_controller->Handle_DigitalIO_Write(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_analogio_add_tag:
-    WS_DEBUG_PRINTLN("-> AnalogIO Add Message Type");
-    if (!WsV2.analogio_controller->Handle_AnalogIOAdd(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_analogio_remove_tag:
-    WS_DEBUG_PRINTLN("-> AnalogIO Remove Message Type");
-    if (!WsV2.analogio_controller->Handle_AnalogIORemove(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_i2c_device_add_replace_tag:
-    WS_DEBUG_PRINTLN("-> I2C Device Add/Replace Message Type");
-    if (!WsV2._i2c_controller->Handle_I2cDeviceAddOrReplace(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_i2c_bus_scan_tag:
-    WS_DEBUG_PRINTLN("-> I2C Bus Scan Message Type");
-    if (!WsV2._i2c_controller->Handle_I2cBusScan(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_i2c_device_remove_tag:
-    WS_DEBUG_PRINTLN("-> I2C Device Remove Message Type");
-    if (!WsV2._i2c_controller->Handle_I2cDeviceRemove(stream)) {
-      return false;
-    }
-    break;
-  case wippersnapper_signal_BrokerToDevice_i2c_device_output_write_tag:
-    WS_DEBUG_PRINTLN("-> I2C Device Output Write Message Type");
-    if (!WsV2._i2c_controller->Handle_I2cDeviceOutputWrite(stream)) {
-      return false;
-    }
     break;
   default:
     WS_DEBUG_PRINTLN("ERROR: BrokerToDevice message type not found!");
@@ -373,125 +297,21 @@ bool cbDecodeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
                 Length of data received from MQTT broker.
 */
 void cbBrokerToDevice(char *data, uint16_t len) {
-  WS_DEBUG_PRINTLN("=> New B2D message!");
-  wippersnapper_signal_BrokerToDevice msg_signal =
-      wippersnapper_signal_BrokerToDevice_init_default;
+  WS_DEBUG_PRINTLN("=> New SignalRequest message!");
 
-  // Configure the payload callback
-  msg_signal.cb_payload.funcs.decode = cbDecodeBrokerToDevice;
+  esmp_v1_SignalRequest msg_signal_req =  esmp_v1_SignalRequest_init_default;
+
+  msg_signal_req.payload.funcs.decode = cbDecodeBrokerToDevice;
 
   // Decode msg_signal
   WS_DEBUG_PRINTLN("Creating input stream...");
   pb_istream_t istream = pb_istream_from_buffer((uint8_t *)data, len);
-  WS_DEBUG_PRINTLN("Decoding BrokerToDevice message...");
-  if (!pb_decode(&istream, wippersnapper_signal_BrokerToDevice_fields,
-                 &msg_signal)) {
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode BrokerToDevice message!");
+  WS_DEBUG_PRINTLN("Decoding SignalRequest message...");
+  if (!pb_decode(&istream, esmp_v1_SignalRequest_fields, &msg_signal_req)) {
+    WS_DEBUG_PRINTLN("ERROR: Unable to decode SignalRequest message!");
     return;
   }
-  WS_DEBUG_PRINTLN("Decoded BrokerToDevice message!");
-}
-
-/*!
-    @brief    Decodes and parses a buffer containing configuration
-              messages from the SD card.
-*/
-void callDecodeB2D() {
-  for (size_t i = 0; i < WsV2._sharedConfigBuffers.size(); i++) {
-    wippersnapper_signal_BrokerToDevice msg_signal =
-        wippersnapper_signal_BrokerToDevice_init_default;
-    // Configure the payload callback
-    msg_signal.cb_payload.funcs.decode = cbDecodeBrokerToDevice;
-    const std::vector<uint8_t> &buffer = WsV2._sharedConfigBuffers[i];
-    pb_istream_t istream = pb_istream_from_buffer(buffer.data(), buffer.size());
-    // Decode the message
-    if (!pb_decode(&istream, wippersnapper_signal_BrokerToDevice_fields,
-                   &msg_signal)) {
-      WS_DEBUG_PRINTLN("ERROR: Unable to decode BrokerToDevice message!");
-      continue; // Skip this message and move on!
-    }
-  }
-}
-
-/*!
-    @brief    Called when client receives a message published across the
-                Adafruit IO MQTT /error special topic.
-    @param    errorData
-                Data from MQTT broker.
-    @param    len
-                Length of data received from MQTT broker.
-*/
-void cbErrorTopicV2(char *errorData, uint16_t len) {
-  (void)len; // marking unused parameter to avoid compiler warning
-  WS_DEBUG_PRINT("IO Ban Error: ");
-  WS_DEBUG_PRINTLN(errorData);
-  // Disconnect client from broker
-  WS_DEBUG_PRINT("Disconnecting from MQTT..");
-  if (!WsV2._mqttV2->disconnect()) {
-    WS_DEBUG_PRINTLN("ERROR: Unable to disconnect from MQTT broker!");
-  }
-
-#ifdef USE_DISPLAY
-  WsV2._ui_helperV2->show_scr_error("IO Ban Error", errorData);
-#endif
-
-  // WDT reset
-  WsV2.haltErrorV2("IO MQTT Ban Error");
-}
-
-/*!
-    @brief    Called when client receives a message published across the
-                Adafruit IO MQTT /throttle special topic. Delays until
-                throttle is released.
-    @param    throttleData
-                Throttle message from Adafruit IO.
-    @param    len
-                Length of data received from MQTT broker.
-*/
-void cbThrottleTopicV2(char *throttleData, uint16_t len) {
-  (void)len; // marking unused parameter to avoid compiler warning
-  WS_DEBUG_PRINT("IO Throttle Error: ");
-  WS_DEBUG_PRINTLN(throttleData);
-  char *throttleMessage;
-  // Parse out # of seconds from message buffer
-  throttleMessage = strtok(throttleData, ",");
-  throttleMessage = strtok(NULL, " ");
-  // Convert from seconds to to millis
-  int throttleDuration = atoi(throttleMessage) * 1000;
-
-  WS_DEBUG_PRINT("Device is throttled for ");
-  WS_DEBUG_PRINT(throttleDuration);
-  WS_DEBUG_PRINTLN("ms and blocking command execution.");
-
-#ifdef USE_DISPLAY
-  char buffer[100];
-  snprintf(
-      buffer, 100,
-      "[IO ERROR] Device is throttled for %d mS and blocking execution..\n.",
-      throttleDuration);
-  WsV2._ui_helperV2->add_text_to_terminal(buffer);
-#endif
-
-  // If throttle duration is less than the keepalive interval, delay for the
-  // full keepalive interval
-  if (throttleDuration < WS_KEEPALIVE_INTERVAL_MS) {
-    delay(WS_KEEPALIVE_INTERVAL_MS);
-  } else {
-    // round to nearest millis to prevent delaying for less time than req'd.
-    float throttleLoops = ceil(throttleDuration / WS_KEEPALIVE_INTERVAL_MS);
-    // block the run() loop
-    while (throttleLoops > 0) {
-      delay(WS_KEEPALIVE_INTERVAL_MS);
-      WsV2.feedWDTV2();
-      WsV2._mqttV2->ping();
-      throttleLoops--;
-    }
-  }
-  WS_DEBUG_PRINTLN("Device is un-throttled, resumed command execution");
-#ifdef USE_DISPLAY
-  WsV2._ui_helperV2->add_text_to_terminal(
-      "[IO] Device is un-throttled, resuming...\n");
-#endif
+  WS_DEBUG_PRINTLN("Decoded SignalRequest message!");
 }
 
 /*!
@@ -548,7 +368,7 @@ bool Wippersnapper_V2::generateDeviceUID() {
     @returns  True if memory for control topics allocated successfully,
                 False otherwise.
 */
-bool Wippersnapper_V2::generateWSTopics() {
+bool Wippersnapper_V2::generateMQTTTopics() {
   WS_DEBUG_PRINTLN("Pre-calculating topic lengths...");
   // Calculate length of strings that are are dynamic within the secrets file
   size_t lenUser = strlen(WsV2._configV2.aio_user);
@@ -600,46 +420,6 @@ bool Wippersnapper_V2::generateWSTopics() {
   WS_DEBUG_PRINT("Device-to-broker topic: ");
   WS_DEBUG_PRINTLN(WsV2._topicD2b);
 
-  // Attempt to allocate memory for the error topic
-#ifdef USE_PSRAM
-  WsV2._topicError = (char *)ps_malloc(sizeof(char) * lenTopicError);
-#else
-  WsV2._topicError = (char *)malloc(sizeof(char) * lenTopicError);
-#endif
-  // Check if memory allocation was successful
-  if (WsV2._topicError == NULL)
-    return false;
-  // Build the error topic
-  snprintf(WsV2._topicError, lenTopicError, "%s/%s/", WsV2._configV2.aio_user,
-           "errors");
-  WS_DEBUG_PRINT("Error topic: ");
-  WS_DEBUG_PRINTLN(WsV2._topicError);
-  // Subscribe to the error topic
-  _subscribeError = new Adafruit_MQTT_Subscribe(WsV2._mqttV2, WsV2._topicError);
-  WsV2._mqttV2->subscribe(_subscribeError);
-  // TODO: Implement the error topic callback
-  _subscribeError->setCallback(cbErrorTopicV2);
-
-// Attempt to allocate memory for the error topic
-#ifdef USE_PSRAM
-  WsV2._topicThrottle = (char *)ps_malloc(sizeof(char) * lenTopicThrottle);
-#else
-  WsV2._topicThrottle = (char *)malloc(sizeof(char) * lenTopicThrottle);
-#endif
-  // Check if memory allocation was successful
-  if (WsV2._topicThrottle == NULL)
-    return false;
-  // Build the throttle topic
-  snprintf(WsV2._topicThrottle, lenTopicThrottle, "%s/%s/",
-           WsV2._configV2.aio_user, "throttle");
-  WS_DEBUG_PRINT("Throttle topic: ");
-  WS_DEBUG_PRINTLN(WsV2._topicThrottle);
-  // Subscribe to throttle topic
-  _subscribeThrottle =
-      new Adafruit_MQTT_Subscribe(WsV2._mqttV2, WsV2._topicThrottle);
-  WsV2._mqttV2->subscribe(_subscribeThrottle);
-  _subscribeThrottle->setCallback(cbThrottleTopicV2);
-
   return true;
 }
 
@@ -690,10 +470,6 @@ void Wippersnapper_V2::runNetFSMV2() {
     case FSM_NET_CHECK_NETWORK:
       if (networkStatus() == WS_NET_CONNECTED) {
         WS_DEBUG_PRINTLN("Connected to WiFi!");
-#ifdef USE_DISPLAY
-        if (WsV2._ui_helperV2->getLoadingState())
-          WsV2._ui_helperV2->set_load_bar_icon_complete(loadBarIconWifi);
-#endif
         fsmNetwork = FSM_NET_ESTABLISH_MQTT;
         break;
       }
@@ -702,19 +478,10 @@ void Wippersnapper_V2::runNetFSMV2() {
     case FSM_NET_ESTABLISH_NETWORK:
       WS_DEBUG_PRINTLN("Establishing network connection...");
       WS_PRINTER.flush();
-#ifdef USE_DISPLAY
-      if (WsV2._ui_helperV2->getLoadingState())
-        WsV2._ui_helperV2->set_label_status("Connecting to WiFi...");
-#endif
       // Perform a WiFi scan and check if SSID within
       // secrets.json is within the scanned SSIDs
       WS_DEBUG_PRINT("Performing a WiFi scan for SSID...");
       if (!check_valid_ssid()) {
-#ifdef USE_DISPLAY
-        WsV2._ui_helperV2->show_scr_error(
-            "ERROR", "Unable to find WiFi network listed in "
-                     "the secrets file. Rebooting soon...");
-#endif
         haltErrorV2("ERROR: Unable to find WiFi network, rebooting soon...",
                     WS_LED_STATUS_WIFI_CONNECTING);
       }
@@ -740,12 +507,6 @@ void Wippersnapper_V2::runNetFSMV2() {
       // Validate connection
       if (networkStatus() != WS_NET_CONNECTED) {
         WS_DEBUG_PRINTLN("ERROR: Unable to connect to WiFi!");
-#ifdef USE_DISPLAY
-        WsV2._ui_helperV2->show_scr_error(
-            "CONNECTION ERROR",
-            "Unable to connect to WiFi Network. Please check that you entered "
-            "the WiFi credentials correctly. Rebooting in 5 seconds...");
-#endif
         haltErrorV2("ERROR: Unable to connect to WiFi, rebooting soon...",
                     WS_LED_STATUS_WIFI_CONNECTING);
       }
@@ -753,10 +514,6 @@ void Wippersnapper_V2::runNetFSMV2() {
       fsmNetwork = FSM_NET_CHECK_NETWORK;
       break;
     case FSM_NET_ESTABLISH_MQTT:
-#ifdef USE_DISPLAY
-      if (WsV2._ui_helperV2->getLoadingState())
-        WsV2._ui_helperV2->set_label_status("Connecting to IO...");
-#endif
       WsV2._mqttV2->setKeepAliveInterval(WS_KEEPALIVE_INTERVAL_MS / 1000);
       // Attempt to connect
       maxAttempts = 5;
@@ -786,14 +543,6 @@ void Wippersnapper_V2::runNetFSMV2() {
         maxAttempts--;
       }
       if (fsmNetwork != FSM_NET_CHECK_MQTT) {
-#ifdef USE_DISPLAY
-        WsV2._ui_helperV2->show_scr_error(
-            "CONNECTION ERROR",
-            "Unable to connect to Adafruit.io. If you are repeatedly having "
-            "this issue, please check that your IO Username and IO Key are set "
-            "correctly in the secrets file. This device will reboot in 5 "
-            "seconds...");
-#endif
         haltErrorV2(
             "ERROR: Unable to connect to Adafruit.IO MQTT, rebooting soon...",
             WS_LED_STATUS_MQTT_CONNECTING);
@@ -853,39 +602,22 @@ void Wippersnapper_V2::haltErrorV2(const char* error, ws_led_status_t ledStatusC
     @returns  True if the signal message published successfully,
               False otherwise.
 */
-bool Wippersnapper_V2::PublishSignal(pb_size_t which_payload, void *payload) {
+bool Wippersnapper_V2::PublishSignalResponse(pb_size_t which_payload, void *payload) {
 
 #ifdef DEBUG_PROFILE
   unsigned long total_start_time = micros();
 #endif
 
   size_t szMessageBuf;
-  wippersnapper_signal_DeviceToBroker MsgSignal =
-      wippersnapper_signal_DeviceToBroker_init_default;
+  esmp_v1_SignalResponse msg_signal_response = esmp_v1_SignalResponse_init_default;
 
   // Fill generic signal payload with the payload from the args.
-  WS_DEBUG_PRINT("Signal Payload Type: ");
+  WS_DEBUG_PRINT("Payload Type: ");
   switch (which_payload) {
-  case wippersnapper_signal_DeviceToBroker_checkin_request_tag:
-    WS_DEBUG_PRINTLN("CheckinRequest");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_checkin_request_tag;
-    MsgSignal.payload.checkin_request =
-        *(wippersnapper_checkin_CheckinRequest *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_digitalio_event_tag:
-    WS_DEBUG_PRINTLN("DigitalIOEvent");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_digitalio_event_tag;
-    MsgSignal.payload.digitalio_event =
-        *(wippersnapper_digitalio_DigitalIOEvent *)payload;
-    break;
-  case wippersnapper_signal_DeviceToBroker_analogio_event_tag:
-    WS_DEBUG_PRINTLN("AnalogIOEvent");
-    MsgSignal.which_payload =
-        wippersnapper_signal_DeviceToBroker_analogio_event_tag;
-    MsgSignal.payload.analogio_event =
-        *(wippersnapper_analogio_AnalogIOEvent *)payload;
+  case esmp_v1_SignalResponse_register_added_tag:
+    WS_DEBUG_PRINTLN("RegisterAdd");
+    msg_signal_response.which_payload = esmp_v1_SignalResponse_register_added_tag;
+    msg_signal_response.payload.register_added = *(register_v1_gpio_RegisterAdded *)payload;
     break;
   default:
     WS_DEBUG_PRINTLN("ERROR: Invalid signal payload type, bailing out!");
@@ -894,10 +626,9 @@ bool Wippersnapper_V2::PublishSignal(pb_size_t which_payload, void *payload) {
 
   // Get the encoded size of the signal message
   if (!pb_get_encoded_size(&szMessageBuf,
-                           wippersnapper_signal_DeviceToBroker_fields,
-                           &MsgSignal)) {
-    WS_DEBUG_PRINTLN(
-        "ERROR: Unable to get encoded size of signal message, bailing out!");
+                           esmp_v1_SignalResponse_fields,
+                           &msg_signal_response)) {
+    WS_DEBUG_PRINTLN("ERROR: Unable to get encoded size of SignalResponse message, bailing out!");
     return false;
   }
 
@@ -905,12 +636,12 @@ bool Wippersnapper_V2::PublishSignal(pb_size_t which_payload, void *payload) {
   uint8_t msgBuf[szMessageBuf];
 
   // Encode the signal message
-  WS_DEBUG_PRINT("Encoding signal message...");
+  WS_DEBUG_PRINT("Encoding signal response message...");
   pb_ostream_t stream = pb_ostream_from_buffer(msgBuf, szMessageBuf);
-  if (!ws_pb_encode(&stream, wippersnapper_signal_DeviceToBroker_fields,
-                    &MsgSignal)) {
+  if (!ws_pb_encode(&stream, esmp_v1_SignalResponse_fields,
+                    &msg_signal_response)) {
     WS_DEBUG_PRINTLN(
-        "ERROR: Unable to encode d2b signal message, bailing out!");
+        "ERROR: Unable to encode signal response message, bailing out!");
     return false;
   }
   WS_DEBUG_PRINTLN("Encoded!");
@@ -940,35 +671,9 @@ bool Wippersnapper_V2::PublishSignal(pb_size_t which_payload, void *payload) {
   WS_DEBUG_PRINT("Publishing time: ");
   WS_DEBUG_PRINTLN(publish_end_time - publish_start_time);
   unsigned long total_end_time = micros();
-  WS_DEBUG_PRINT("Total PublishSignal() execution time: ");
+  WS_DEBUG_PRINT("Total PublishSignalResponse() execution time: ");
   WS_DEBUG_PRINTLN(total_end_time - total_start_time);
 #endif
-
-  return true;
-}
-
-/*!
-    @brief    Creates, fills, encodes and publishes a checkin request
-              message to the broker.
-    @returns  True if the Checkin request message published successfully,
-              False otherwise.
-*/
-bool Wippersnapper_V2::CreateCheckinRequest() {
-  WS_DEBUG_PRINT("Creating the CheckinRequest message...");
-  WsV2.CheckInModel = new CheckinModel();
-  WsV2.CheckInModel->CreateCheckinRequest(WsV2.sUIDV2, WS_VERSION);
-  WS_DEBUG_PRINTLN("Created!");
-
-  WS_DEBUG_PRINT("Encoding the CheckinRequest message...");
-  if (!WsV2.CheckInModel->EncodeCheckinRequest())
-    return false;
-  WS_DEBUG_PRINTLN("Encoded!");
-
-  WS_DEBUG_PRINT("Publishing Checkin Request...");
-  if (!PublishSignal(wippersnapper_signal_DeviceToBroker_checkin_request_tag,
-                     WsV2.CheckInModel->getCheckinRequest()))
-    return false;
-  WS_DEBUG_PRINTLN("Published!");
 
   return true;
 }
@@ -977,12 +682,12 @@ bool Wippersnapper_V2::CreateCheckinRequest() {
     @brief    Polls for and handles the checkin response
               message from the broker.
 */
-void Wippersnapper_V2::PollCheckinResponse() {
-  WsV2.got_checkin_response = false;
+void Wippersnapper_V2::PollRegisterResponse() {
+  WsV2.got_register_response = false;
   WS_DEBUG_PRINTLN("Waiting for checkin response...");
   // If we don't get a response within WS_WDT_TIMEOUT seconds, the WDT
   // will expire and reset the device
-  while (!WsV2.got_checkin_response) {
+  while (!WsV2.got_register_response) {
     pingBrokerV2(); // Pinging the broker to keep the connection alive
     WsV2._mqttV2->processPackets(10); // Process incoming packets
   }
@@ -1001,15 +706,8 @@ void Wippersnapper_V2::pingBrokerV2() {
     WS_DEBUG_PRINT("Sending MQTT PING: ");
     if (WsV2._mqttV2->ping()) {
       WS_DEBUG_PRINTLN("SUCCESS!");
-#ifdef USE_DISPLAY
-      WsV2._ui_helperV2->add_text_to_terminal("[NET] Sent KeepAlive ping!\n");
-#endif
     } else {
       WS_DEBUG_PRINTLN("FAILURE! Running network FSM...");
-#ifdef USE_DISPLAY
-      WsV2._ui_helperV2->add_text_to_terminal(
-          "[NET] EROR: Failed to send KeepAlive ping!\n");
-#endif
       WsV2._mqttV2->disconnect();
       runNetFSMV2();
     }
@@ -1106,7 +804,7 @@ void printDeviceInfoV2() {
     @brief    Connects to Adafruit IO+ Wippersnapper_V2 broker.
 */
 void Wippersnapper_V2::connect() {
-  WS_DEBUG_PRINTLN("Adafruit.io WipperSnapper");
+  WS_DEBUG_PRINTLN("ESMP v1.0 Demo");
   // Dump device info to the serial monitor
   printDeviceInfoV2();
 
@@ -1120,65 +818,29 @@ void Wippersnapper_V2::connect() {
   }
   WS_DEBUG_PRINTLN("Device UID generated successfully!");
 
-  // If we are running in offline mode, we skip the network setup
-  // and MQTT connection process and jump to the offline device config process
-  // NOTE: After this, bail out of this function and run the app loop!!!
-  if (WsV2._sdCardV2->isModeOffline() == true) {
-    WS_DEBUG_PRINTLN("[Offline] Running device configuration...");
-// If debug mode, wait for serial config
-#ifdef OFFLINE_MODE_DEBUG
-    WsV2._sdCardV2->waitForSerialConfig();
-#endif
-    // Parse the JSON file
-    if (!WsV2._sdCardV2->parseConfigFile())
-      haltErrorV2("Failed to parse config.json!");
-    WS_DEBUG_PRINTLN("[Offline] Attempting to configure hardware...");
-#ifndef OFFLINE_MODE_DEBUG
-    if (!WsV2._sdCardV2->CreateNewLogFile())
-      haltErrorV2("Unable to create new .log file on SD card!");
-#endif
-    // Call the TL signal decoder to parse the incoming JSON data
-    callDecodeB2D();
-    WS_DEBUG_PRINTLN("[Offline] Hardware configured, skipping network setup "
-                     "and running app...");
-    // Blink status LED to green to indicate successful configuration
-    setStatusLEDColor(0x00A300, WsV2.status_pixel_brightnessV2 * 255.0);
-    delay(500);
-    setStatusLEDColor(0x000000, WsV2.status_pixel_brightnessV2 * 255.0);
-    return;
-  } else {
-    WS_DEBUG_PRINTLN("Running in online mode...");
-  }
-
   // Configures an Adafruit Arduino MQTT object
   WS_DEBUG_PRINTLN("Setting up MQTT client...");
   setupMQTTClient(_device_uidV2);
   WS_DEBUG_PRINTLN("Set up MQTT client successfully!");
 
   WS_DEBUG_PRINTLN("Generating device's MQTT topics...");
-  if (!generateWSTopics()) {
+  if (!generateMQTTTopics()) {
     haltErrorV2("Unable to allocate space for MQTT topics");
   }
   WS_DEBUG_PRINTLN("Generated device's MQTT topics successfully!");
 
   // Connect to Network
-  WS_DEBUG_PRINTLN("Running Network FSM...");
+  WS_DEBUG_PRINTLN("Establishing network connection...");
   // Run the network fsm
   runNetFSMV2();
   WsV2.feedWDTV2();
 
-#ifdef USE_DISPLAY
-  WsV2._ui_helperV2->set_load_bar_icon_complete(loadBarIconCloud);
-  WsV2._ui_helperV2->set_label_status("Sending device info...");
-#endif
-
-  WS_DEBUG_PRINTLN("Performing checkin handshake...");
-  // Publish the checkin request
-  if (!CreateCheckinRequest()) {
+  WS_DEBUG_PRINTLN("Registering Device with MQTT Broker...");
+  if (!CreateRegisterRequest()) {
     haltErrorV2("Unable to publish checkin request");
   }
   // Handle the checkin response
-  PollCheckinResponse();
+  PollRegisterResponse();
 
   // Set the status LED to green to indicate successful configuration
   setStatusLEDColor(0x00A300, WsV2.status_pixel_brightnessV2);
@@ -1186,13 +848,6 @@ void Wippersnapper_V2::connect() {
   // Set the status LED to off during app runtime
   setStatusLEDColor(0x000000, WsV2.status_pixel_brightnessV2);
 
-// switch to monitor screen
-#ifdef USE_DISPLAY
-  WS_DEBUG_PRINTLN("Clearing loading screen...");
-  WsV2._ui_helperV2->clear_scr_load();
-  WS_DEBUG_PRINTLN("building monitor screen...");
-  WsV2._ui_helperV2->build_scr_monitor();
-#endif
   WS_DEBUG_PRINTLN("Running app loop...");
 }
 
