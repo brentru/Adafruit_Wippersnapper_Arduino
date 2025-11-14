@@ -97,7 +97,6 @@
 
 
 #include "provisioning/ConfigJson.h"
-#include "provisioning/sdcard/ws_sdcard.h"
 #if defined(USE_TINYUSB)
 #include "provisioning/tinyusb/Wippersnapper_FS.h"
 #endif
@@ -117,7 +116,6 @@
 // Forward declarations
 class Wippersnapper_FS;
 class WipperSnapper_LittleFS;
-class ws_sdcard;
 class RegisterModel;
 class SensorModel;
 class DigitalIOController;
@@ -200,10 +198,9 @@ public:
   Wippersnapper_FS *_fileSystemV2; ///< Instance of Filesystem (native USB)
   WipperSnapper_LittleFS
       *_littleFSV2;     ///< Instance of LittleFS Filesystem (non-native USB)
-  ws_sdcard *_sdCardV2; ///< Instance of SD card class
 
   // API v2 Components
-  RegisterModel *RegisterModel = nullptr; ///< Instance of RegisterModel class
+  RegisterModel *register_model = nullptr; ///< Instance of RegisterModel class
   SensorModel *sensorModel = nullptr;   ///< Instance of SensorModel class
   DigitalIOController *digital_io_controller =
       nullptr; ///< Instance of DigitalIO controller class

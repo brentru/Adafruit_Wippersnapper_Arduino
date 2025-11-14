@@ -23,13 +23,6 @@ class DigitalIOHardware {
 public:
   DigitalIOHardware();
   ~DigitalIOHardware();
-  bool ConfigurePin(uint8_t name,
-                    wippersnapper_digitalio_DigitalIODirection direction);
-  void SetValue(uint8_t pin_name, bool pin_value);
-  bool GetValue(uint8_t pin_name);
-  void deinit(uint8_t pin_name);
-  bool IsStatusLEDPin(uint8_t pin_name);
-
 private:
 };
 #endif // WS_DIGITALIO_HARDWARE_H

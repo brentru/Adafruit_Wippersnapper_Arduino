@@ -20,21 +20,6 @@
 
 class Wippersnapper_V2;
 
-/**
- * @struct DigitalIOPin
- * @brief This struct represents a digital I/O pin.
- */
-struct DigitalIOPin {
-  uint8_t pin_name; ///< The pin's name.
-  wippersnapper_digitalio_DigitalIODirection
-      pin_direction; ///< The pin's direction.
-  wippersnapper_digitalio_DigitalIOSampleMode
-      sample_mode;    ///< The pin's sample mode.
-  bool pin_value;     ///< The pin's value.
-  bool prv_pin_value; ///< The pin's previous value.
-  ulong pin_period;   ///< The pin's period.
-  ulong prv_pin_time; ///< The pin's previous time.
-};
 
 class DigitalIOModel;    // Forward declaration
 class DigitalIOHardware; // Forward declaration
@@ -48,27 +33,8 @@ class DigitalIOController {
 public:
   DigitalIOController();
   ~DigitalIOController();
-  // Called by the cbDecodeBrokerToDevice router function
-  bool Handle_DigitalIO_Add(pb_istream_t *stream);
-  bool Handle_DigitalIO_Write(pb_istream_t *stream);
-  bool Handle_DigitalIO_Remove(pb_istream_t *stream);
-
-  void Update();
-
-  bool EncodePublishPinEvent(uint8_t pin_name, bool pin_value);
-  bool CheckEventPin(DigitalIOPin *pin);
-  bool CheckTimerPin(DigitalIOPin *pin);
-  bool IsPinTimerExpired(DigitalIOPin *pin, ulong cur_time);
-
-  void PrintPinValue(DigitalIOPin *pin);
-  void SetMaxDigitalPins(uint8_t max_digital_pins);
-  int GetPinIdx(uint8_t pin_name);
-
 private:
-  std::vector<DigitalIOPin> _digitalio_pins;
-  uint8_t _max_digitalio_pins;
-  DigitalIOModel *_dio_model;
-  DigitalIOHardware *_dio_hardware;
+
 };
 extern Wippersnapper_V2 WsV2; ///< Wippersnapper V2 instance
 #endif                        // WS_DIGITALIO_CONTROLLER_H

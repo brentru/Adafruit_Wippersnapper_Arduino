@@ -13,8 +13,6 @@
  *
  */
 #include "controller.h"
-#include "drivers/drvBase.h"
-#include "drivers/drvOutputBase.h"
 
 /*!
     @brief  I2cController constructor

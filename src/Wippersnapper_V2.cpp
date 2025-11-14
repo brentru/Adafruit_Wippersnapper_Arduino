@@ -47,13 +47,13 @@ Wippersnapper_V2::Wippersnapper_V2() {
   _subscribeThrottle = 0;
 
   // Initialize model classes
-  WsV2.sensorModel = new SensorModel();
-  WsV2.RegisterModel = new RegisterModel();
+  //WsV2.sensorModel = new SensorModel();
+  WsV2.register_model = new RegisterModel();
 
   // Initialize controller classes
   WsV2.digital_io_controller = new DigitalIOController();
   WsV2.analogio_controller = new AnalogIOController();
-  WsV2._i2c_controller = new I2cController();
+  //WsV2._i2c_controller = new I2cController();
 };
 
 /*!
@@ -207,16 +207,16 @@ void Wippersnapper_V2::set_user_key() {
 bool Wippersnapper_V2::CreateRegisterRequest() {
   WS_DEBUG_PRINT("Creating the Register message with UID: ");
   WS_DEBUG_PRINTLN(WsV2.sUIDV2);
-  WsV2.RegisterModel->CreateRegisterAddRequest(WsV2.sUIDV2);
+  WsV2.register_model->CreateRegisterAddRequest(WsV2.sUIDV2);
   WS_DEBUG_PRINTLN("Created!");
 
   WS_DEBUG_PRINT("Encoding the Register message...");
-  if (!WsV2.RegisterModel->EncodeRegisterAddRequest())
+  if (!WsV2.register_model->EncodeRegisterAddRequest())
     return false;
   WS_DEBUG_PRINTLN("Encoded!");
 
   WS_DEBUG_PRINT("Publishing Register Request...");
-  if (!PublishSignalResponse(esmp_v1_SignalRequest_register_add_tag, WsV2.RegisterModel->getRegisterAddRequest()))
+  if (!PublishSignalResponse(esmp_v1_SignalRequest_register_add_tag, WsV2.register_model->getRegisterAddRequest()))
     return false;
   WS_DEBUG_PRINTLN("Published!");
 
@@ -233,21 +233,20 @@ bool Wippersnapper_V2::CreateRegisterRequest() {
 */
 bool handleRegisterResponse(pb_istream_t *stream) {
   // Decode the Register Response message
-  if (!WsV2.RegisterModel->DecodeRegisterAddedResponse(stream)) {
+  if (!WsV2.register_model->DecodeRegisterAddedResponse(stream)) {
     WS_DEBUG_PRINTLN("ERROR: Unable to decode Register Response message");
     return false;
   }
 
   // Parse the response message
-  WsV2.RegisterModel->ParseRegisterAddedResponse();
+  WsV2.register_model->ParseRegisterAddedResponse();
 
   // Configure GPIO classes based on register response message
-  WsV2.digital_io_controller->SetMaxDigitalPins(
-      WsV2.RegisterModel->getDigitalPinCount());
+  // TODO! Add these back!
+  // WsV2.digital_io_controller->SetMaxDigitalPins(WsV2.register_model->getDigitalPinCount());
 
-  WsV2.analogio_controller->SetRefVoltage(3.3);
-  WsV2.analogio_controller->SetTotalAnalogPins(
-      WsV2.RegisterModel->getAnalogPinCount());
+  //WsV2.analogio_controller->SetRefVoltage(3.3);
+  // WsV2.analogio_controller->SetTotalAnalogPins(WsV2.register_model->getAnalogPinCount());
 
   // set glob flag so we don't keep the polling loop open
   WsV2.got_register_response = true;
@@ -856,22 +855,17 @@ void Wippersnapper_V2::connect() {
     @returns  Network status, as ws_status_t.
 */
 ws_status_t Wippersnapper_V2::run() {
-  WsV2.feedWDTV2();
-  if (!WsV2._sdCardV2->isModeOffline()) {
-    // Handle networking functions
-    runNetFSMV2();
-    pingBrokerV2();
-    // Process all incoming packets from Wippersnapper_V2 MQTT Broker
-    WsV2._mqttV2->processPackets(10);
-  } else {
-    BlinkKATStatus(); // Offline Mode - Blink every KAT interval
-  }
+  // Handle networking functions
+  runNetFSMV2();
+  pingBrokerV2();
+  // Process all incoming packets from MQTT Broker
+  WsV2._mqttV2->processPackets(10);
 
   // Process all digital events
-  WsV2.digital_io_controller->Update();
+  // WsV2.digital_io_controller->Update();
 
   // Process all analog inputs
-  WsV2.analogio_controller->update();
+  // WsV2.analogio_controller->update();
 
   return WS_NET_CONNECTED; // TODO: Make this funcn void!
 }
