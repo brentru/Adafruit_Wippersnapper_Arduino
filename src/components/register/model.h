@@ -27,7 +27,7 @@ public:
   // Request Message
   void CreateRegisterAddRequest(const char *device_identifier);
   bool EncodeRegisterAddRequest();
-  register_v1_gpio_RegisterAdd *getRegisterAddRequest();
+  esmp_v1_register_RegisterAdd *getRegisterAddRequest();
   // Response Message
   bool DecodeRegisterAddedResponse(pb_istream_t *stream);
   void ParseRegisterAddedResponse();
@@ -44,8 +44,8 @@ public:
                                                 void **arg);
 
 private:
-  register_v1_gpio_RegisterAdd _RegisterAdd;
-  register_v1_gpio_RegisterAdded _RegisterAdded;
+  esmp_v1_register_RegisterAdd _RegisterAdd;
+  esmp_v1_register_RegisterAdded _RegisterAdded;
   char _device_identifier[128]; // Buffer for device identifier
   uint32_t _pin_cnt_digital;
   uint32_t _pin_cnt_analog;

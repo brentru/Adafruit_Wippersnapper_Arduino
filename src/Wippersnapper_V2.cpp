@@ -300,7 +300,7 @@ void cbBrokerToDevice(char *data, uint16_t len) {
 
   esmp_v1_SignalRequest msg_signal_req =  esmp_v1_SignalRequest_init_default;
 
-  msg_signal_req.payload.funcs.decode = cbDecodeBrokerToDevice;
+  msg_signal_req.cb_payload.funcs.decode = cbDecodeBrokerToDevice;
 
   // Decode msg_signal
   WS_DEBUG_PRINTLN("Creating input stream...");
@@ -616,7 +616,7 @@ bool Wippersnapper_V2::PublishSignalResponse(pb_size_t which_payload, void *payl
   case esmp_v1_SignalResponse_register_added_tag:
     WS_DEBUG_PRINTLN("RegisterAdd");
     msg_signal_response.which_payload = esmp_v1_SignalResponse_register_added_tag;
-    msg_signal_response.payload.register_added = *(register_v1_gpio_RegisterAdded *)payload;
+    msg_signal_response.payload.register_added = *(esmp_v1_register_RegisterAdded *)payload;
     break;
   default:
     WS_DEBUG_PRINTLN("ERROR: Invalid signal payload type, bailing out!");

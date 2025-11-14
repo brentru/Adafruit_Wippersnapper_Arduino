@@ -86,7 +86,7 @@ bool RegisterModel::DecodeRegisterAddedResponse(pb_istream_t *stream) {
   _RegisterAdded.device_identifier.funcs.decode = &decode_device_identifier_callback;
   _RegisterAdded.device_identifier.arg = _device_identifier;
   
-  return pb_decode(stream, register_v1_gpio_RegisterAdded_fields, &_RegisterAdded);
+  return pb_decode(stream, esmp_v1_register_RegisterAdded_fields, &_RegisterAdded);
 }
 
 /*!
@@ -101,7 +101,7 @@ void RegisterModel::ParseRegisterAddedResponse() {
     @brief  Gets the RegisterAdd message
     @returns RegisterAdd message.
 */
-register_v1_gpio_RegisterAdd *RegisterModel::getRegisterAddRequest() {
+esmp_v1_register_RegisterAdd *RegisterModel::getRegisterAddRequest() {
   return &_RegisterAdd;
 }
 
