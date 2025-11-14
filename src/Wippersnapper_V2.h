@@ -96,7 +96,7 @@
 
 // Components (API v2)
 #include "components/analogIO/controller.h"
-#include "components/checkin/model.h"
+#include "components/register/model.h"
 #include "components/digitalIO/controller.h"
 #include "components/i2c/controller.h"
 #include "components/sensor/model.h"
@@ -134,7 +134,7 @@ class ws_sdcard;
 class ws_display_driver;
 class ws_display_ui_helper;
 #endif
-class CheckinModel;
+class RegisterModel;
 class SensorModel;
 class DigitalIOController;
 class AnalogIOController;
@@ -183,9 +183,9 @@ public:
   // High-level MQTT Publish
   bool PublishSignal(pb_size_t which_payload, void *payload);
 
-  // Checkin API
-  bool CreateCheckinRequest();
-  void PollCheckinResponse();
+  // Register API
+  bool CreateRegisterRequest();
+  void PollRegisterResponse();
 
   // run() loop
   ws_status_t run();
@@ -225,7 +225,7 @@ public:
 #endif
 
   // API v2 Components
-  CheckinModel *CheckInModel = nullptr; ///< Instance of CheckinModel class
+  RegisterModel *RegisterModel = nullptr; ///< Instance of RegisterModel class
   SensorModel *sensorModel = nullptr;   ///< Instance of SensorModel class
   DigitalIOController *digital_io_controller =
       nullptr; ///< Instance of DigitalIO controller class
@@ -252,7 +252,7 @@ public:
   int throttleTimeV2;      /*!< Total amount of time to throttle the device, in
                             milliseconds. */
 
-  bool got_checkin_response; ///< True if a checkin response was received, False
+  bool got_register_response; ///< True if a register response was received, False
                              ///< otherwise.
   std::vector<std::vector<uint8_t>>
       _sharedConfigBuffers; ///< Shared JSON config buffers for offline mode

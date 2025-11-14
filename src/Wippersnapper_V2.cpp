@@ -243,41 +243,35 @@ void Wippersnapper_V2::set_user_key() {
 }
 
 /*!
-    @brief    Handles a Checkin Response message and initializes the
+    @brief    Handles a Register Response message and initializes the
               device's GPIO classes.
     @param    stream
               Incoming data stream from buffer.
-    @returns  True if Checkin Response decoded and parsed successfully,
+    @returns  True if Register Response decoded and parsed successfully,
               False otherwise.
 */
-bool handleCheckinResponse(pb_istream_t *stream) {
-  // Decode the Checkin Response message
-  if (!WsV2.CheckInModel->DecodeCheckinResponse(stream)) {
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode Checkin Response message");
+bool handleRegisterResponse(pb_istream_t *stream) {
+  // Decode the Register Response message
+  if (!WsV2.RegisterModel->DecodeRegisterAddedResponse(stream)) {
+    WS_DEBUG_PRINTLN("ERROR: Unable to decode Register Response message");
     return false;
   }
 
   // Parse the response message
-  WsV2.CheckInModel->ParseCheckinResponse();
+  WsV2.RegisterModel->ParseRegisterAddedResponse();
 
-  // Validate the checkin response message
-  if (WsV2.CheckInModel->getCheckinResponse() !=
-      wippersnapper_checkin_CheckinResponse_Response_RESPONSE_OK) {
-    WS_DEBUG_PRINTLN("ERROR: CheckinResponse not RESPONSE_OK, backing out!");
-    return false;
-  }
-
-  // Configure GPIO classes based on checkin response message
+  // Configure GPIO classes based on register response message
   WsV2.digital_io_controller->SetMaxDigitalPins(
-      WsV2.CheckInModel->getTotalGPIOPins());
+      WsV2.RegisterModel->getDigitalPinCount());
 
-  WsV2.analogio_controller->SetRefVoltage(
-      WsV2.CheckInModel->getReferenceVoltage());
+  // For now, use a default reference voltage of 3.3V
+  // TODO: Add reference voltage to ESMP protocol if needed
+  WsV2.analogio_controller->SetRefVoltage(3.3f);
   WsV2.analogio_controller->SetTotalAnalogPins(
-      WsV2.CheckInModel->getTotalAnalogPins());
+      WsV2.RegisterModel->getAnalogPinCount());
 
   // set glob flag so we don't keep the polling loop open
-  WsV2.got_checkin_response = true;
+  WsV2.got_register_response = true;
   return true;
 }
 
