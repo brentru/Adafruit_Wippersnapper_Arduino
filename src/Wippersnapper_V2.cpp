@@ -253,6 +253,50 @@ bool handleRegisterResponse(pb_istream_t *stream) {
   return true;
 }
 
+/*!
+    @brief    Handles a GPIOAdd message from the broker.
+    @param    stream
+              Incoming data stream from buffer.
+    @returns  True if GPIOAdd decoded and processed successfully,
+              False otherwise.
+*/
+bool handleGPIOAdd(pb_istream_t *stream) {
+  esmp_v1_gpio_GPIOAdd gpio_add = esmp_v1_gpio_GPIOAdd_init_default;
+  if (!ws_pb_decode(stream, esmp_v1_gpio_GPIOAdd_fields, &gpio_add)) {
+    WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to decode GPIOAdd message!");
+    return false;
+  }
+
+  if (!WsV2.digital_io_controller->Handle_GPIOAdd(&gpio_add)) {
+    WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to handle GPIOAdd message!");
+    return false;
+  }
+
+  return true;
+}
+
+/*!
+    @brief    Handles a GPIOWrite message from the broker.
+    @param    stream
+              Incoming data stream from buffer.
+    @returns  True if GPIOWrite decoded and processed successfully,
+              False otherwise.
+*/
+bool handleGPIOWrite(pb_istream_t *stream) {
+  esmp_v1_gpio_GPIOWrite gpio_write = esmp_v1_gpio_GPIOWrite_init_default;
+  if (!ws_pb_decode(stream, esmp_v1_gpio_GPIOWrite_fields, &gpio_write)) {
+    WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to decode GPIOWrite message!");
+    return false;
+  }
+
+  if (!WsV2.digital_io_controller->Handle_GPIOWrite(&gpio_write)) {
+    WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to handle GPIOWrite message!");
+    return false;
+  }
+
+  return true;
+}
+
 // Decoders //
 
 /*!
@@ -271,9 +315,25 @@ bool cbDecodeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
   (void)arg; // marking unused parameters to avoid compiler warning
 
   switch (field->tag) {
-  case esmp_v1_SignalResponse_register_added_tag:
-    WS_DEBUG_PRINTLN("-> Register Added Response");
+  case esmp_v1_SignalRequest_register_add_tag:
+    WS_DEBUG_PRINTLN("-> Register Add Request");
     if (!handleRegisterResponse(stream)) {
+      return false;
+    }
+    WS_DEBUG_PRINTLN("Handled!");
+    break;
+  case esmp_v1_SignalRequest_gpio_add_tag:
+    WS_DEBUG_PRINT("[digitalio] -> GPIO Add @");
+    WS_DEBUG_PRINTLN(millis());
+    if (!handleGPIOAdd(stream)) {
+      return false;
+    }
+    WS_DEBUG_PRINTLN("Handled!");
+    break;
+  case esmp_v1_SignalRequest_gpio_write_tag:
+    WS_DEBUG_PRINT("[digitalio] -> GPIO Write @");
+    WS_DEBUG_PRINTLN(millis());
+    if (!handleGPIOWrite(stream)) {
       return false;
     }
     WS_DEBUG_PRINTLN("Handled!");

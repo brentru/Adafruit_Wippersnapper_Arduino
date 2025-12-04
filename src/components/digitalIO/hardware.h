@@ -15,6 +15,7 @@
 #ifndef WS_DIGITALIO_HARDWARE_H
 #define WS_DIGITALIO_HARDWARE_H
 #include "Wippersnapper_V2.h"
+#include "protos/gpio.pb.h"
 
 /*!
     @brief  Interface for interacting with hardware's digital I/O pin API.
@@ -23,6 +24,11 @@ class DigitalIOHardware {
 public:
   DigitalIOHardware();
   ~DigitalIOHardware();
+  bool ConfigurePin(uint8_t name, esmp_v1_gpio_GPIODirection direction);
+  void deinit(uint8_t pin_name);
+  void SetValue(uint8_t pin_name, bool pin_value);
+  bool GetValue(uint8_t pin_name);
+  bool IsStatusLEDPin(uint8_t pin_name);
 private:
 };
 #endif // WS_DIGITALIO_HARDWARE_H
