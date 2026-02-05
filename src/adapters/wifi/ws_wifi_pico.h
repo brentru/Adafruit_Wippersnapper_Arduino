@@ -168,12 +168,12 @@ public:
               : _aio_root_ca_staging);
       WsV2._mqttV2 = new Adafruit_MQTT_Client(
           _mqtt_client_secure, WsV2._configV2.aio_url, WsV2._configV2.io_port,
-          clientID, WsV2._configV2.aio_user, WsV2._configV2.aio_key);
+          clientID, WsV2._configV2.user, WsV2._configV2.aio_key);
     } else {
       _mqtt_client_insecure = new WiFiClient();
       WsV2._mqttV2 = new Adafruit_MQTT_Client(
           _mqtt_client_insecure, WsV2._configV2.aio_url, WsV2._configV2.io_port,
-          clientID, WsV2._configV2.aio_user, WsV2._configV2.aio_key);
+          clientID, WsV2._configV2.user, WsV2._configV2.aio_key);
     }
   }
 

@@ -238,13 +238,8 @@ private:
   // MQTT topics
   char *_topicB2d;
   char *_topicD2b;
-  char *_topicError;
-  char *_topicThrottle;
-
   // Adafruit_MQTT Subscription objects
   Adafruit_MQTT_Subscribe *_subscribeB2d;
-  Adafruit_MQTT_Subscribe *_subscribeError;
-  Adafruit_MQTT_Subscribe *_subscribeThrottle;
 
 protected:
   ws_status_t _statusV2 = WS_IDLE; ///< Wippersnapper status

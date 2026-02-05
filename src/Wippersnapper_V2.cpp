@@ -32,6 +32,10 @@
  */
 
 #include "Wippersnapper_V2.h"
+#ifdef ARDUINO_ARCH_ESP32
+#include <WiFi.h>
+#include <NetworkClient.h>
+#endif
 
 Wippersnapper_V2 WsV2;
 
@@ -41,11 +45,6 @@ Wippersnapper_V2::Wippersnapper_V2() {
   _mqttV2 = 0; // MQTT Client object
 
   // Reserved MQTT Topics
-  _topicError = 0;
-  _topicThrottle = 0;
-  _subscribeError = 0;
-  _subscribeThrottle = 0;
-
   // Initialize model classes
   //WsV2.sensorModel = new SensorModel();
   WsV2.register_model = new RegisterModel();
@@ -87,6 +86,8 @@ void Wippersnapper_V2::provision() {
   check_valid_ssid(); // non-fs-backed, sets global credentials within network
                       // iface
 #endif
+
+  _configV2 = WsV2._configV2;
   // Set the status pixel's brightness
   setStatusLEDBrightness(WsV2._configV2.status_pixel_brightness);
   // Set device's wireless credentials
@@ -232,22 +233,8 @@ bool Wippersnapper_V2::CreateRegisterRequest() {
               False otherwise.
 */
 bool handleRegisterResponse(pb_istream_t *stream) {
-  // Decode the Register Response message
-  if (!WsV2.register_model->DecodeRegisterAddedResponse(stream)) {
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode Register Response message");
-    return false;
-  }
-
-  // Parse the response message
-  WsV2.register_model->ParseRegisterAddedResponse();
-
-  // Configure GPIO classes based on register response message
-  // TODO! Add these back!
-  // WsV2.digital_io_controller->SetMaxDigitalPins(WsV2.register_model->getDigitalPinCount());
-
-  //WsV2.analogio_controller->SetRefVoltage(3.3);
-  // WsV2.analogio_controller->SetTotalAnalogPins(WsV2.register_model->getAnalogPinCount());
-
+  (void)stream;
+  WS_DEBUG_PRINTLN("[register] Skipping register decode (forced OK)");
   // set glob flag so we don't keep the polling loop open
   WsV2.got_register_response = true;
   return true;
@@ -261,11 +248,15 @@ bool handleRegisterResponse(pb_istream_t *stream) {
               False otherwise.
 */
 bool handleGPIOAdd(pb_istream_t *stream) {
+  WS_DEBUG_PRINT("[digitalio] Decoding GPIOAdd @");
+  WS_DEBUG_PRINTLN(millis());
   esmp_v1_gpio_GPIOAdd gpio_add = esmp_v1_gpio_GPIOAdd_init_default;
   if (!ws_pb_decode(stream, esmp_v1_gpio_GPIOAdd_fields, &gpio_add)) {
     WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to decode GPIOAdd message!");
     return false;
   }
+  WS_DEBUG_PRINT("[digitalio] Decoded GPIOAdd @");
+  WS_DEBUG_PRINTLN(millis());
 
   if (!WsV2.digital_io_controller->Handle_GPIOAdd(&gpio_add)) {
     WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to handle GPIOAdd message!");
@@ -283,11 +274,15 @@ bool handleGPIOAdd(pb_istream_t *stream) {
               False otherwise.
 */
 bool handleGPIOWrite(pb_istream_t *stream) {
+  WS_DEBUG_PRINT("[digitalio] Decoding GPIOWrite @");
+  WS_DEBUG_PRINTLN(millis());
   esmp_v1_gpio_GPIOWrite gpio_write = esmp_v1_gpio_GPIOWrite_init_default;
   if (!ws_pb_decode(stream, esmp_v1_gpio_GPIOWrite_fields, &gpio_write)) {
     WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to decode GPIOWrite message!");
     return false;
   }
+  WS_DEBUG_PRINT("[digitalio] Decoded GPIOWrite @");
+  WS_DEBUG_PRINTLN(millis());
 
   if (!WsV2.digital_io_controller->Handle_GPIOWrite(&gpio_write)) {
     WS_DEBUG_PRINTLN("[digitalio] ERROR: Unable to handle GPIOWrite message!");
@@ -349,14 +344,15 @@ bool cbDecodeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
 
 /*!
     @brief    Called when client receives a message published across the
-                Adafruit IO MQTT /ws-b2d/ "signal topic".
+                Adafruit IO MQTT /esmp-b2d/ "signal topic".
     @param    data
                 Data (payload) from MQTT broker.
     @param    len
                 Length of data received from MQTT broker.
 */
 void cbBrokerToDevice(char *data, uint16_t len) {
-  WS_DEBUG_PRINTLN("=> New SignalRequest message!");
+  WS_DEBUG_PRINT("=> New SignalRequest message @");
+  WS_DEBUG_PRINTLN(millis());
 
   esmp_v1_SignalRequest msg_signal_req =  esmp_v1_SignalRequest_init_default;
 
@@ -365,12 +361,14 @@ void cbBrokerToDevice(char *data, uint16_t len) {
   // Decode msg_signal
   WS_DEBUG_PRINTLN("Creating input stream...");
   pb_istream_t istream = pb_istream_from_buffer((uint8_t *)data, len);
-  WS_DEBUG_PRINTLN("Decoding SignalRequest message...");
+  WS_DEBUG_PRINT("Decoding SignalRequest message @");
+  WS_DEBUG_PRINTLN(millis());
   if (!pb_decode(&istream, esmp_v1_SignalRequest_fields, &msg_signal_req)) {
     WS_DEBUG_PRINTLN("ERROR: Unable to decode SignalRequest message!");
     return;
   }
-  WS_DEBUG_PRINTLN("Decoded SignalRequest message!");
+  WS_DEBUG_PRINT("Decoded SignalRequest message @");
+  WS_DEBUG_PRINTLN(millis());
 }
 
 /*!
@@ -413,7 +411,7 @@ bool Wippersnapper_V2::generateDeviceUID() {
   }
 
   // Create the device identifier
-  snprintf(_device_uidV2, lenDeviceUID, "io-wipper-%s%s", WsV2._boardIdV2,
+  snprintf(_device_uidV2, lenDeviceUID, "esmp-board-%s%s", WsV2._boardIdV2,
            WsV2.sUIDV2);
   WS_DEBUG_PRINT("Device UID: ");
   WS_DEBUG_PRINTLN(_device_uidV2);
@@ -430,19 +428,16 @@ bool Wippersnapper_V2::generateDeviceUID() {
 bool Wippersnapper_V2::generateMQTTTopics() {
   WS_DEBUG_PRINTLN("Pre-calculating topic lengths...");
   // Calculate length of strings that are are dynamic within the secrets file
-  size_t lenUser = strlen(WsV2._configV2.aio_user);
+  size_t lenUser = strlen(WsV2._configV2.user);
   size_t lenBoardId = strlen(_device_uidV2);
   // Calculate length of static strings
-  size_t lenTopicX2x = strlen("/ws-x2x/");
-  size_t lenTopicErrorStr = strlen("/errors/");
-  size_t lenTopicThrottleStr = strlen("/throttle/");
+  size_t lenTopicB2dStr = strlen("/esmp-b2d/");
+  size_t lenTopicD2bStr = strlen("/esmp-d2b/");
   // Calculate length of complete topic strings
   // NOTE: We are using "+2" to account for the null terminator and the "/" at
   // the end of the topic
-  size_t lenTopicB2d = lenUser + lenTopicX2x + lenBoardId + 2;
-  size_t lenTopicD2b = lenUser + lenTopicX2x + lenBoardId + 2;
-  size_t lenTopicError = lenUser + lenTopicErrorStr + 2;
-  size_t lenTopicThrottle = lenUser + lenTopicThrottleStr + 2;
+  size_t lenTopicB2d = lenUser + lenTopicB2dStr + lenBoardId + 2;
+  size_t lenTopicD2b = lenUser + lenTopicD2bStr + lenBoardId + 2;
 
   // Attempt to allocate memory for the broker-to-device topic
 #ifdef USE_PSRAM
@@ -454,10 +449,13 @@ bool Wippersnapper_V2::generateMQTTTopics() {
   if (WsV2._topicB2d == NULL)
     return false;
   // Build the broker-to-device topic
-  snprintf(WsV2._topicB2d, lenTopicB2d, "%s/ws-b2d/%s/",
-           WsV2._configV2.aio_user, _device_uidV2);
+  snprintf(WsV2._topicB2d, lenTopicB2d, "%s/esmp-b2d/%s/",
+           WsV2._configV2.user, _device_uidV2);
   WS_DEBUG_PRINT("Broker-to-device topic: ");
   WS_DEBUG_PRINTLN(WsV2._topicB2d);
+  WS_DEBUG_PRINT("Broker-to-device signal topic: ");
+  WS_DEBUG_PRINT(WsV2._topicB2d);
+  WS_DEBUG_PRINTLN("signals/device");
   // Subscribe to broker-to-device topic
   _subscribeB2d = new Adafruit_MQTT_Subscribe(WsV2._mqttV2, WsV2._topicB2d, 1);
   WsV2._mqttV2->subscribe(_subscribeB2d);
@@ -474,8 +472,8 @@ bool Wippersnapper_V2::generateMQTTTopics() {
   if (WsV2._topicD2b == NULL)
     return false;
   // Build the broker-to-device topic
-  snprintf(WsV2._topicD2b, lenTopicD2b, "%s/ws-d2b/%s/",
-           WsV2._configV2.aio_user, _device_uidV2);
+  snprintf(WsV2._topicD2b, lenTopicD2b, "%s/esmp-d2b/%s/",
+           WsV2._configV2.user, _device_uidV2);
   WS_DEBUG_PRINT("Device-to-broker topic: ");
   WS_DEBUG_PRINTLN(WsV2._topicD2b);
 
@@ -535,43 +533,50 @@ void Wippersnapper_V2::runNetFSMV2() {
       fsmNetwork = FSM_NET_ESTABLISH_NETWORK;
       break;
     case FSM_NET_ESTABLISH_NETWORK:
-      WS_DEBUG_PRINTLN("Establishing network connection...");
-      WS_PRINTER.flush();
-      // Perform a WiFi scan and check if SSID within
-      // secrets.json is within the scanned SSIDs
-      WS_DEBUG_PRINT("Performing a WiFi scan for SSID...");
-      if (!check_valid_ssid()) {
-        haltErrorV2("ERROR: Unable to find WiFi network, rebooting soon...",
-                    WS_LED_STATUS_WIFI_CONNECTING);
-      }
-      // Attempt to connect to wireless network
-      maxAttempts = 5;
-      while (maxAttempts > 0) {
-        // blink before we connect
-        statusLEDBlink(WS_LED_STATUS_WIFI_CONNECTING);
-        feedWDTV2();
-        // attempt to connect
-        WS_DEBUG_PRINT("Connecting to WiFi (attempt #");
-        WS_DEBUG_PRINT(5 - maxAttempts);
-        WS_DEBUG_PRINTLN(")");
+      {
+        WS_DEBUG_PRINTLN("Establishing network connection...");
         WS_PRINTER.flush();
-        feedWDTV2();
-        _connect();
-        feedWDTV2();
-        // did we connect?
-        if (networkStatus() == WS_NET_CONNECTED)
-          break;
-        maxAttempts--;
-      }
-      // Validate connection
-      if (networkStatus() != WS_NET_CONNECTED) {
-        WS_DEBUG_PRINTLN("ERROR: Unable to connect to WiFi!");
-        haltErrorV2("ERROR: Unable to connect to WiFi, rebooting soon...",
-                    WS_LED_STATUS_WIFI_CONNECTING);
-      }
+        // Perform a WiFi scan and check if SSID within
+        // secrets.json is within the scanned SSIDs
+        WS_DEBUG_PRINTLN("Performing a WiFi scan for SSID...");
+        WS_PRINTER.flush();
+        bool ssid_ok = check_valid_ssid();
+        WS_DEBUG_PRINT("check_valid_ssid() returned: ");
+        WS_DEBUG_PRINTLN(ssid_ok ? "true" : "false");
+        WS_PRINTER.flush();
+        if (!ssid_ok) {
+          haltErrorV2("ERROR: Unable to find WiFi network, rebooting soon...",
+                      WS_LED_STATUS_WIFI_CONNECTING);
+        }
+        // Attempt to connect to wireless network
+        maxAttempts = 5;
+        while (maxAttempts > 0) {
+          // blink before we connect
+          statusLEDBlink(WS_LED_STATUS_WIFI_CONNECTING);
+          feedWDTV2();
+          // attempt to connect
+          WS_DEBUG_PRINT("Connecting to WiFi (attempt #");
+          WS_DEBUG_PRINT(5 - maxAttempts);
+          WS_DEBUG_PRINTLN(")");
+          WS_PRINTER.flush();
+          feedWDTV2();
+          _connect();
+          feedWDTV2();
+          // did we connect?
+          if (networkStatus() == WS_NET_CONNECTED)
+            break;
+          maxAttempts--;
+        }
+        // Validate connection
+        if (networkStatus() != WS_NET_CONNECTED) {
+          WS_DEBUG_PRINTLN("ERROR: Unable to connect to WiFi!");
+          haltErrorV2("ERROR: Unable to connect to WiFi, rebooting soon...",
+                      WS_LED_STATUS_WIFI_CONNECTING);
+        }
 
-      fsmNetwork = FSM_NET_CHECK_NETWORK;
-      break;
+        fsmNetwork = FSM_NET_CHECK_NETWORK;
+        break;
+      }
     case FSM_NET_ESTABLISH_MQTT:
       WsV2._mqttV2->setKeepAliveInterval(WS_KEEPALIVE_INTERVAL_MS / 1000);
       // Attempt to connect
@@ -678,6 +683,11 @@ bool Wippersnapper_V2::PublishSignalResponse(pb_size_t which_payload, void *payl
     msg_signal_response.which_payload = esmp_v1_SignalResponse_register_added_tag;
     msg_signal_response.payload.register_added = *(esmp_v1_register_RegisterAdded *)payload;
     break;
+  case esmp_v1_SignalResponse_gpio_event_tag:
+    WS_DEBUG_PRINTLN("GPIOEvent");
+    msg_signal_response.which_payload = esmp_v1_SignalResponse_gpio_event_tag;
+    msg_signal_response.payload.gpio_event = *(esmp_v1_gpio_GPIOEvent *)payload;
+    break;
   default:
     WS_DEBUG_PRINTLN("ERROR: Invalid signal payload type, bailing out!");
     return false;
@@ -723,7 +733,8 @@ bool Wippersnapper_V2::PublishSignalResponse(pb_size_t which_payload, void *payl
     WS_DEBUG_PRINTLN("ERROR: Failed to publish signal message to broker!");
     return false;
   }
-  WS_DEBUG_PRINTLN("Published!");
+  WS_DEBUG_PRINT("Published @");
+  WS_DEBUG_PRINTLN(millis());
 
 #ifdef DEBUG_PROFILE
   unsigned long publish_end_time = micros();
@@ -838,8 +849,8 @@ void printDeviceInfoV2() {
   WS_DEBUG_PRINTLN("API: Version 2");
   WS_DEBUG_PRINT("Board ID: ");
   WS_DEBUG_PRINTLN(BOARD_ID);
-  WS_DEBUG_PRINT("Adafruit.io User: ");
-  WS_DEBUG_PRINTLN(WsV2._configV2.aio_user);
+  WS_DEBUG_PRINT("User: ");
+  WS_DEBUG_PRINTLN(WsV2._configV2.user);
   WS_DEBUG_PRINT("WiFi Network: ");
   WS_DEBUG_PRINTLN(WsV2._configV2.network.ssid);
 
@@ -863,14 +874,17 @@ void printDeviceInfoV2() {
     @brief    Connects to Adafruit IO+ Wippersnapper_V2 broker.
 */
 void Wippersnapper_V2::connect() {
-  WS_DEBUG_PRINTLN("ESMP v1.0 Demo");
+  WS_DEBUG_PRINTLN("[connect] ESMP v1.0 Demo");
   // Dump device info to the serial monitor
   printDeviceInfoV2();
 
+  WS_DEBUG_PRINTLN("[connect] Enabling WDT");
   // enable global WDT
   WsV2.enableWDTV2(WS_WDT_TIMEOUT);
+  WS_DEBUG_PRINTLN("[connect] WDT enabled");
 
   // Generate device identifier
+  WS_DEBUG_PRINTLN("[connect] Generating device UID...");
   WS_DEBUG_PRINTLN("Generating device UID...");
   if (!generateDeviceUID()) {
     haltErrorV2("Unable to generate Device UID");
@@ -878,10 +892,12 @@ void Wippersnapper_V2::connect() {
   WS_DEBUG_PRINTLN("Device UID generated successfully!");
 
   // Configures an Adafruit Arduino MQTT object
+  WS_DEBUG_PRINTLN("[connect] Setting up MQTT client...");
   WS_DEBUG_PRINTLN("Setting up MQTT client...");
   setupMQTTClient(_device_uidV2);
   WS_DEBUG_PRINTLN("Set up MQTT client successfully!");
 
+  WS_DEBUG_PRINTLN("[connect] Generating MQTT topics...");
   WS_DEBUG_PRINTLN("Generating device's MQTT topics...");
   if (!generateMQTTTopics()) {
     haltErrorV2("Unable to allocate space for MQTT topics");
@@ -889,17 +905,19 @@ void Wippersnapper_V2::connect() {
   WS_DEBUG_PRINTLN("Generated device's MQTT topics successfully!");
 
   // Connect to Network
+  WS_DEBUG_PRINTLN("[connect] Running network FSM...");
   WS_DEBUG_PRINTLN("Establishing network connection...");
   // Run the network fsm
   runNetFSMV2();
+  WS_DEBUG_PRINTLN("[connect] Network FSM complete");
   WsV2.feedWDTV2();
 
   WS_DEBUG_PRINTLN("Registering Device with MQTT Broker...");
   if (!CreateRegisterRequest()) {
     haltErrorV2("Unable to publish checkin request");
   }
-  // Handle the checkin response
-  PollRegisterResponse();
+  // Skip waiting for checkin response (forced OK)
+  WsV2.got_register_response = true;
 
   // Set the status LED to green to indicate successful configuration
   setStatusLEDColor(0x00A300, WsV2.status_pixel_brightnessV2);
@@ -922,7 +940,7 @@ ws_status_t Wippersnapper_V2::run() {
   WsV2._mqttV2->processPackets(10);
 
   // Process all digital events
-  // WsV2.digital_io_controller->Update();
+  WsV2.digital_io_controller->Update();
 
   // Process all analog inputs
   // WsV2.analogio_controller->update();

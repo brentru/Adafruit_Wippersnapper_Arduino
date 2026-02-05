@@ -110,11 +110,11 @@ void WipperSnapper_LittleFS::parseSecrets() {
   WsV2._configV2 = doc.as<secretsConfig>();
 
   // Validate the config struct is not filled with default values
-  if (strcmp(WsV2._configV2.aio_user, "YOUR_IO_USERNAME_HERE") == 0 ||
+  if (strcmp(WsV2._configV2.user, "YOUR_USER_HERE") == 0 ||
       strcmp(WsV2._configV2.aio_key, "YOUR_IO_KEY_HERE") == 0) {
     fsHalt(
         "ERROR: Invalid IO credentials in secrets.json! TO FIX: Please change "
-        "io_username and io_key to match your Adafruit IO credentials!\n");
+        "user and io_key to match your credentials!\n");
   }
 
   if (strcmp(WsV2._configV2.network.ssid, "YOUR_WIFI_SSID_HERE") == 0 ||

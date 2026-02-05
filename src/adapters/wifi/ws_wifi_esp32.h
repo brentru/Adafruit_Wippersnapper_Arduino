@@ -71,8 +71,8 @@ public:
     strncpy(WsV2._configV2.network.pass, _pass,
             sizeof(WsV2._configV2.network.pass));
     strncpy(WsV2._configV2.aio_key, aioKey, sizeof(WsV2._configV2.aio_key));
-    strncpy(WsV2._configV2.aio_user, aioUsername,
-            sizeof(WsV2._configV2.aio_user));
+    strncpy(WsV2._configV2.user, aioUsername,
+            sizeof(WsV2._configV2.user));
     strncpy(WsV2._configV2.aio_url, brokerURL, sizeof(WsV2._configV2.aio_url));
     WsV2._configV2.io_port = brokerPort;
   }
@@ -119,16 +119,43 @@ public:
   @returns True if `_network_ssid` is found, False otherwise.
   */
   bool check_valid_ssid() {
-    // Set WiFi to station mode and disconnect from an AP if it was previously
-    // connected
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    delay(100);
+    WS_DEBUG_PRINT("[wifi] check_valid_ssid enter @");
+    WS_DEBUG_PRINTLN(millis());
+    WS_PRINTER.flush();
+    WS_DEBUG_PRINT("[wifi] free heap: ");
+    WS_DEBUG_PRINTLN(ESP.getFreeHeap());
+    WS_PRINTER.flush();
+    // NOTE: WiFi.mode()/disconnect() appears to trigger a crash on ESP32-S2
+    // in this build. Skip those calls during scan to isolate the fault.
+    WS_DEBUG_PRINTLN("[wifi] skipping WiFi.mode/disconnect for scan");
+    WS_PRINTER.flush();
 
-    // Perform a network scan
-    int n = WiFi.scanNetworks();
-    if (n == 0) {
+    // Perform a network scan (async + timeout to avoid blocking/crash)
+    WS_DEBUG_PRINTLN("[wifi] scanning for SSID");
+    WS_PRINTER.flush();
+    unsigned long scan_start = millis();
+    int n = WiFi.scanNetworks(true);
+    if (n == WIFI_SCAN_RUNNING) {
+      while ((n = WiFi.scanComplete()) == WIFI_SCAN_RUNNING) {
+        if (millis() - scan_start > 15000) {
+          WS_DEBUG_PRINTLN("ERROR: WiFi scan timeout");
+          WS_PRINTER.flush();
+          WiFi.scanDelete();
+          return false;
+        }
+        delay(50);
+        WsV2.feedWDTV2();
+      }
+    }
+    unsigned long scan_end = millis();
+    WS_DEBUG_PRINT("[wifi] scan count: ");
+    WS_DEBUG_PRINTLN(n);
+    WS_DEBUG_PRINT("[wifi] scan duration (ms): ");
+    WS_DEBUG_PRINTLN(scan_end - scan_start);
+    WS_PRINTER.flush();
+    if (n <= 0) {
       WS_DEBUG_PRINTLN("ERROR: No WiFi networks found!");
+      WS_PRINTER.flush();
       return false;
     }
 
@@ -139,6 +166,7 @@ public:
         WS_DEBUG_PRINT(_ssid);
         WS_DEBUG_PRINT(") found! RSSI: ");
         WS_DEBUG_PRINTLN(WiFi.RSSI(i));
+        WS_PRINTER.flush();
         return true;
       }
       if (WsV2._isWiFiMultiV2) {
@@ -150,6 +178,7 @@ public:
             WS_DEBUG_PRINT(WsV2._multiNetworksV2[j].ssid);
             WS_DEBUG_PRINT(") found! RSSI: ");
             WS_DEBUG_PRINTLN(WiFi.RSSI(i));
+            WS_PRINTER.flush();
             return true;
           }
         }
@@ -158,6 +187,7 @@ public:
 
     // User-set network not found, print scan results to serial console
     WS_DEBUG_PRINTLN("ERROR: Your requested WiFi network was not found!");
+    WS_PRINTER.flush();
     WS_DEBUG_PRINTLN("WipperSnapper found these WiFi networks: ");
     for (int i = 0; i < n; ++i) {
       WS_DEBUG_PRINT(WiFi.SSID(i));
@@ -165,6 +195,7 @@ public:
       WS_DEBUG_PRINT(WiFi.RSSI(i));
       WS_DEBUG_PRINTLN("dB");
     }
+    WS_PRINTER.flush();
 
     return false;
   }
@@ -200,14 +231,14 @@ public:
               : _aio_root_ca_staging);
       WsV2._mqttV2 = new Adafruit_MQTT_Client(
           _mqtt_client_secure, WsV2._configV2.aio_url, WsV2._configV2.io_port,
-          clientID, WsV2._configV2.aio_user, WsV2._configV2.aio_key);
+          clientID, WsV2._configV2.user, WsV2._configV2.aio_key);
     } else {
       // Insecure connections require a NetworkClient object rather than a
       // NetworkClientSecure object
       _mqtt_client_insecure = new NetworkClient();
       WsV2._mqttV2 = new Adafruit_MQTT_Client(
           _mqtt_client_insecure, WsV2._configV2.aio_url, WsV2._configV2.io_port,
-          clientID, WsV2._configV2.aio_user, WsV2._configV2.aio_key);
+          clientID, WsV2._configV2.user, WsV2._configV2.aio_key);
     }
   }
 
@@ -305,16 +336,36 @@ protected:
   */
   void _connect() {
 
-    if (WiFi.status() == WL_CONNECTED)
+    WS_DEBUG_PRINTLN("[wifi] _connect begin");
+    WS_DEBUG_PRINT("[wifi] status before: ");
+    WS_DEBUG_PRINTLN(WiFi.status());
+    WS_DEBUG_PRINT("[wifi] SSID: ");
+    WS_DEBUG_PRINTLN(_ssid ? _ssid : "(null)");
+    WS_DEBUG_PRINT("[wifi] pass len: ");
+    WS_DEBUG_PRINTLN(_pass ? strlen(_pass) : 0);
+    WS_DEBUG_PRINT("[wifi] multi: ");
+    WS_DEBUG_PRINTLN(WsV2._isWiFiMultiV2 ? "yes" : "no");
+    WS_PRINTER.flush();
+
+    if (WiFi.status() == WL_CONNECTED) {
+      WS_DEBUG_PRINTLN("[wifi] already connected");
+      WS_PRINTER.flush();
       return;
+    }
 
     if (strlen(_ssid) == 0) {
+      WS_DEBUG_PRINTLN("[wifi] SSID invalid");
+      WS_PRINTER.flush();
       _statusV2 = WS_SSID_INVALID;
     } else {
+      WS_DEBUG_PRINTLN("[wifi] disconnecting before connect");
+      WS_PRINTER.flush();
       WiFi.setAutoReconnect(false);
       _disconnect();
       delay(100);
       if (WsV2._isWiFiMultiV2) {
+        WS_DEBUG_PRINTLN("[wifi] using multi-network");
+        WS_PRINTER.flush();
         // multi network mode
         _wifiMulti.APlistClean();
         _wifiMulti.setAllowOpenAP(false);
@@ -327,6 +378,8 @@ protected:
                              WsV2._multiNetworksV2[i].pass);
           }
         }
+        WS_DEBUG_PRINTLN("[wifi] running wifiMulti");
+        WS_PRINTER.flush();
         if (_wifiMulti.run(20000) == WL_CONNECTED) {
           _statusV2 = WS_NET_CONNECTED;
         } else {
@@ -334,11 +387,25 @@ protected:
         }
       } else {
         // single network mode
-        WiFi.begin(_ssid, _pass);
+        WS_DEBUG_PRINTLN("[wifi] calling WiFi.begin");
+        WS_PRINTER.flush();
+        wl_status_t begin_result = WiFi.begin(_ssid, _pass);
+        WS_DEBUG_PRINT("[wifi] WiFi.begin result: ");
+        WS_DEBUG_PRINTLN(begin_result);
+        WS_PRINTER.flush();
         _statusV2 = WS_NET_DISCONNECTED;
         WsV2.feedWDTV2();
         delay(5000);
       }
+      WS_DEBUG_PRINT("[wifi] status after: ");
+      WS_DEBUG_PRINTLN(WiFi.status());
+      if (WiFi.status() == WL_CONNECTED) {
+        WS_DEBUG_PRINT("[wifi] IP: ");
+        WS_DEBUG_PRINTLN(WiFi.localIP());
+        WS_DEBUG_PRINT("[wifi] RSSI: ");
+        WS_DEBUG_PRINTLN(WiFi.RSSI());
+      }
+      WS_PRINTER.flush();
       WsV2.feedWDTV2();
     }
   }

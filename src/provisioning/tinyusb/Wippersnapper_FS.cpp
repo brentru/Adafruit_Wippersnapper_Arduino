@@ -355,7 +355,7 @@ void Wippersnapper_FS::createSecretsFile() {
 
   // Create a default secretsConfig structure
   secretsConfig secretsConfig;
-  strcpy(secretsConfig.aio_user, "YOUR_IO_USERNAME_HERE");
+  strcpy(secretsConfig.user, "YOUR_USER_HERE");
   strcpy(secretsConfig.aio_key, "YOUR_IO_KEY_HERE");
   strcpy(secretsConfig.network.ssid, "YOUR_WIFI_SSID_HERE");
   strcpy(secretsConfig.network.pass, "YOUR_WIFI_PASS_HERE");
@@ -441,21 +441,21 @@ void Wippersnapper_FS::parseSecrets() {
   WsV2._configV2 = doc.as<secretsConfig>();
 
   // Validate the config struct is not filled with default values
-  if (strcmp(WsV2._configV2.aio_user, "YOUR_IO_USERNAME_HERE") == 0 ||
+  if (strcmp(WsV2._configV2.user, "YOUR_USER_HERE") == 0 ||
       strcmp(WsV2._configV2.aio_key, "YOUR_IO_KEY_HERE") == 0) {
     writeToBootOut(
         "ERROR: Invalid IO credentials in secrets.json! TO FIX: Please change "
-        "io_username and io_key to match your Adafruit IO credentials!\n");
+        "user and io_key to match your credentials!\n");
 #ifdef USE_DISPLAY
     WsV2._ui_helperV2->show_scr_error(
         "INVALID IO CREDS",
-        "The \"io_username/io_key\" fields within secrets.json are invalid, "
+        "The \"user/io_key\" fields within secrets.json are invalid, "
         "please "
-        "change it to match your Adafruit IO credentials. Then, press RESET.");
+        "change it to match your credentials. Then, press RESET.");
 #endif
     fsHalt(
         "ERROR: Invalid IO credentials in secrets.json! TO FIX: Please change "
-        "io_username and io_key to match your Adafruit IO credentials!");
+        "user and io_key to match your credentials!");
   }
 
   if (strcmp(WsV2._configV2.network.ssid, "YOUR_WIFI_SSID_HERE") == 0 ||
@@ -480,7 +480,7 @@ void Wippersnapper_FS::parseSecrets() {
   writeToBootOut(WsV2._configV2.network.ssid);
   writeToBootOut(WsV2._configV2.network.pass);
   writeToBootOut("IO Creds.\n: ");
-  writeToBootOut(WsV2._configV2.aio_user);
+  writeToBootOut(WsV2._configV2.user);
   writeToBootOut(WsV2._configV2.aio_key);
 
   // Close secrets.json file

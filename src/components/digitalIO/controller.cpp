@@ -15,6 +15,7 @@
 #include "controller.h"
 #include "components/statusLED/Wippersnapper_StatusLED.h"
 #include <cstdlib>
+#include <cstdio>
 
 /*!
     @brief  DigitalIOController constructor
@@ -167,7 +168,9 @@ bool DigitalIOController::Handle_GPIOWrite(const esmp_v1_gpio_GPIOWrite *msg) {
   WS_DEBUG_PRINT("[digitalio] Writing pin D");
   WS_DEBUG_PRINT(pin.pin_name);
   WS_DEBUG_PRINT(" = ");
-  WS_DEBUG_PRINTLN(msg->value);
+  WS_DEBUG_PRINT(msg->value);
+  WS_DEBUG_PRINT(" @");
+  WS_DEBUG_PRINTLN(millis());
 
   _dio_hardware->SetValue(pin.pin_name, msg->value);
   WS_DEBUG_PRINT("[digitalio] WROTE pin D");
@@ -179,4 +182,81 @@ bool DigitalIOController::Handle_GPIOWrite(const esmp_v1_gpio_GPIOWrite *msg) {
   pin.prv_pin_value = pin.pin_value;
   pin.pin_value = msg->value;
   return true;
+}
+
+/*!
+    @brief  Publishes a GPIOEvent message to the broker.
+    @param  pin_name
+            The pin number (no D/A prefix).
+    @param  value
+            The pin's current value.
+    @return True if the event was published successfully, False otherwise.
+*/
+bool DigitalIOController::PublishGPIOEvent(uint8_t pin_name, bool value) {
+  esmp_v1_gpio_GPIOEvent gpio_event = esmp_v1_gpio_GPIOEvent_init_default;
+  snprintf(gpio_event.pin_name, sizeof(gpio_event.pin_name), "D%u", pin_name);
+  gpio_event.value = value;
+
+  WS_DEBUG_PRINT("[digitalio] Publishing GPIOEvent for D");
+  WS_DEBUG_PRINT(pin_name);
+  WS_DEBUG_PRINT(" = ");
+  WS_DEBUG_PRINT(value);
+  WS_DEBUG_PRINT(" @");
+  WS_DEBUG_PRINTLN(millis());
+
+  return WsV2.PublishSignalResponse(esmp_v1_SignalResponse_gpio_event_tag,
+                                    &gpio_event);
+}
+
+/*!
+    @brief  Updates digital input pins and publishes events as needed.
+*/
+void DigitalIOController::Update() {
+  if (_digitalio_pins.empty()) {
+    return;
+  }
+
+  unsigned long now = millis();
+  for (size_t i = 0; i < _digitalio_pins.size(); i++) {
+    DigitalIOPin &pin = _digitalio_pins[i];
+
+    if (pin.pin_direction ==
+            esmp_v1_gpio_GPIODirection_GPIO_DIRECTION_OUTPUT) {
+      continue; // Only sample input pins
+    }
+
+    bool current_value = _dio_hardware->GetValue(pin.pin_name);
+
+    if (pin.sample_mode ==
+        esmp_v1_gpio_GPIOSampleMode_GPIO_SAMPLE_MODE_EVENT) {
+      if (current_value != pin.prv_pin_value) {
+        WS_DEBUG_PRINT("[digitalio] Event detected on D");
+        WS_DEBUG_PRINT(pin.pin_name);
+        WS_DEBUG_PRINT(" = ");
+        WS_DEBUG_PRINT(current_value);
+        WS_DEBUG_PRINT(" @");
+        WS_DEBUG_PRINTLN(now);
+        pin.prv_pin_value = current_value;
+        pin.pin_value = current_value;
+        PublishGPIOEvent(pin.pin_name, current_value);
+      }
+    } else if (pin.sample_mode ==
+               esmp_v1_gpio_GPIOSampleMode_GPIO_SAMPLE_MODE_POLL) {
+      if (pin.pin_period == 0) {
+        continue;
+      }
+      if ((unsigned long)(now - pin.prv_pin_time) >= pin.pin_period) {
+        pin.prv_pin_time = now;
+        pin.prv_pin_value = current_value;
+        pin.pin_value = current_value;
+        WS_DEBUG_PRINT("[digitalio] Poll sample on D");
+        WS_DEBUG_PRINT(pin.pin_name);
+        WS_DEBUG_PRINT(" = ");
+        WS_DEBUG_PRINT(current_value);
+        WS_DEBUG_PRINT(" @");
+        WS_DEBUG_PRINTLN(now);
+        PublishGPIOEvent(pin.pin_name, current_value);
+      }
+    }
+  }
 }

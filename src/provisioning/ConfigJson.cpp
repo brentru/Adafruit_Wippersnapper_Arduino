@@ -28,7 +28,7 @@ void convertFromJson(JsonVariantConst src, networkConfig &dst) {
 
 // Converts a secretsConfig structure to a JSON variant
 void convertToJson(const secretsConfig &src, JsonVariant dst) {
-  dst["io_username"] = src.aio_user;
+  dst["user"] = src.user;
   dst["io_key"] = src.aio_key;
   dst["network_type_wifi"] = src.network;
   dst["status_pixel_brightness"] = src.status_pixel_brightness;
@@ -39,8 +39,8 @@ void convertFromJson(JsonVariantConst src, secretsConfig &dst) {
   // Parse network credentials from secrets
   dst.network = src["network_type_wifi"];
   // Parse IO credentials from secrets
-  strlcpy(dst.aio_user, src["io_username"] | "YOUR_IO_USERNAME_HERE",
-          sizeof(dst.aio_user));
+  strlcpy(dst.user, src["user"] | src["io_username"] | "YOUR_USER_HERE",
+          sizeof(dst.user));
   strlcpy(dst.aio_key, src["io_key"] | "YOUR_IO_KEY_HERE", sizeof(dst.aio_key));
   strlcpy(dst.aio_url, src["io_url"] | "io.adafruit.com", sizeof(dst.aio_url));
   // Parse status pixel brightness from secrets

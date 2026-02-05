@@ -71,7 +71,7 @@ public:
                 not avaliable.
   */
   void set_user_key() {
-    strlcpy(WS._config.aio_user, _username, sizeof(WS._config.aio_user));
+    strlcpy(WS._config.user, _username, sizeof(WS._config.user));
     strlcpy(WS._config.aio_key, _key, sizeof(WS._config.aio_key));
   }
 
@@ -182,7 +182,7 @@ public:
   void setupMQTTClient(const char *clientID) {
     WS._mqtt = new Adafruit_MQTT_Client(
         _mqtt_client, WS._config.aio_url, WS._config.io_port, clientID,
-        WS._config.aio_user, WS._config.aio_key);
+        WS._config.user, WS._config.aio_key);
   }
 
   /*!

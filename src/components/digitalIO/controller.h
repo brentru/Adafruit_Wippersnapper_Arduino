@@ -51,9 +51,11 @@ public:
   bool Handle_GPIOAdd(const esmp_v1_gpio_GPIOAdd *msg);
   bool Handle_GPIOWrite(const esmp_v1_gpio_GPIOWrite *msg);
   void SetMaxDigitalPins(uint8_t max_digital_pins);
+  void Update();
 
 private:
   int GetPinIdx(uint8_t pin_name);
+  bool PublishGPIOEvent(uint8_t pin_name, bool value);
   DigitalIOModel *_dio_model;
   DigitalIOHardware *_dio_hardware;
   uint8_t _max_digitalio_pins;
