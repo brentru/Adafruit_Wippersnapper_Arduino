@@ -292,6 +292,64 @@ bool handleGPIOWrite(pb_istream_t *stream) {
   return true;
 }
 
+/*!
+    @brief    Handles an AnalogInAdd message from the broker.
+    @param    stream
+              Incoming data stream from buffer.
+    @returns  True if AnalogInAdd decoded and processed successfully,
+              False otherwise.
+*/
+bool handleAnalogInAdd(pb_istream_t *stream) {
+  WS_DEBUG_PRINT("[analogio] Decoding AnalogInAdd @");
+  WS_DEBUG_PRINTLN(millis());
+  esmp_v1_analogin_AnalogInAdd analog_in_add =
+      esmp_v1_analogin_AnalogInAdd_init_default;
+  if (!ws_pb_decode(stream, esmp_v1_analogin_AnalogInAdd_fields,
+                    &analog_in_add)) {
+    WS_DEBUG_PRINTLN("[analogio] ERROR: Unable to decode AnalogInAdd message!");
+    return false;
+  }
+  WS_DEBUG_PRINT("[analogio] Decoded AnalogInAdd @");
+  WS_DEBUG_PRINTLN(millis());
+
+  if (!WsV2.analogio_controller->Handle_AnalogInAdd(&analog_in_add)) {
+    WS_DEBUG_PRINTLN("[analogio] ERROR: Unable to handle AnalogInAdd message!");
+    return false;
+  }
+
+  return true;
+}
+
+/*!
+    @brief    Handles an AnalogInRemove message from the broker.
+    @param    stream
+              Incoming data stream from buffer.
+    @returns  True if AnalogInRemove decoded and processed successfully,
+              False otherwise.
+*/
+bool handleAnalogInRemove(pb_istream_t *stream) {
+  WS_DEBUG_PRINT("[analogio] Decoding AnalogInRemove @");
+  WS_DEBUG_PRINTLN(millis());
+  esmp_v1_analogin_AnalogInRemove analog_in_remove =
+      esmp_v1_analogin_AnalogInRemove_init_default;
+  if (!ws_pb_decode(stream, esmp_v1_analogin_AnalogInRemove_fields,
+                    &analog_in_remove)) {
+    WS_DEBUG_PRINTLN(
+        "[analogio] ERROR: Unable to decode AnalogInRemove message!");
+    return false;
+  }
+  WS_DEBUG_PRINT("[analogio] Decoded AnalogInRemove @");
+  WS_DEBUG_PRINTLN(millis());
+
+  if (!WsV2.analogio_controller->Handle_AnalogInRemove(&analog_in_remove)) {
+    WS_DEBUG_PRINTLN(
+        "[analogio] ERROR: Unable to handle AnalogInRemove message!");
+    return false;
+  }
+
+  return true;
+}
+
 // Decoders //
 
 /*!
@@ -329,6 +387,22 @@ bool cbDecodeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
     WS_DEBUG_PRINT("[digitalio] -> GPIO Write @");
     WS_DEBUG_PRINTLN(millis());
     if (!handleGPIOWrite(stream)) {
+      return false;
+    }
+    WS_DEBUG_PRINTLN("Handled!");
+    break;
+  case esmp_v1_SignalRequest_analog_in_add_tag:
+    WS_DEBUG_PRINT("[analogio] -> AnalogIn Add @");
+    WS_DEBUG_PRINTLN(millis());
+    if (!handleAnalogInAdd(stream)) {
+      return false;
+    }
+    WS_DEBUG_PRINTLN("Handled!");
+    break;
+  case esmp_v1_SignalRequest_analog_in_remove_tag:
+    WS_DEBUG_PRINT("[analogio] -> AnalogIn Remove @");
+    WS_DEBUG_PRINTLN(millis());
+    if (!handleAnalogInRemove(stream)) {
       return false;
     }
     WS_DEBUG_PRINTLN("Handled!");
@@ -688,6 +762,13 @@ bool Wippersnapper_V2::PublishSignalResponse(pb_size_t which_payload, void *payl
     msg_signal_response.which_payload = esmp_v1_SignalResponse_gpio_event_tag;
     msg_signal_response.payload.gpio_event = *(esmp_v1_gpio_GPIOEvent *)payload;
     break;
+  case esmp_v1_SignalResponse_analog_in_event_tag:
+    WS_DEBUG_PRINTLN("AnalogInEvent");
+    msg_signal_response.which_payload =
+        esmp_v1_SignalResponse_analog_in_event_tag;
+    msg_signal_response.payload.analog_in_event =
+        *(esmp_v1_analogin_AnalogInEvent *)payload;
+    break;
   default:
     WS_DEBUG_PRINTLN("ERROR: Invalid signal payload type, bailing out!");
     return false;
@@ -943,7 +1024,7 @@ ws_status_t Wippersnapper_V2::run() {
   WsV2.digital_io_controller->Update();
 
   // Process all analog inputs
-  // WsV2.analogio_controller->update();
+  WsV2.analogio_controller->Update();
 
   return WS_NET_CONNECTED; // TODO: Make this funcn void!
 }

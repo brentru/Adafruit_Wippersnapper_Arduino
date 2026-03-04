@@ -15,6 +15,7 @@
 #ifndef WS_ANALOGIO_MODEL_H
 #define WS_ANALOGIO_MODEL_H
 #include "Wippersnapper_V2.h"
+#include "protos/analogin.pb.h"
 
 /*!
     @brief  Provides an interface for creating, encoding, and parsing
@@ -24,6 +25,9 @@ class AnalogIOModel {
 public:
   AnalogIOModel();
   ~AnalogIOModel();
+  bool PopulateAnalogInEvent(esmp_v1_analogin_AnalogInEvent *event,
+                             uint8_t pin_name,
+                             float value);
 
 private:
 

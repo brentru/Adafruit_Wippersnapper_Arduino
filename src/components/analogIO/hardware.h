@@ -23,7 +23,9 @@ class AnalogIOHardware {
 public:
   AnalogIOHardware();
   ~AnalogIOHardware();
-
+  bool ConfigurePin(uint8_t pin_name);
+  void deinit(uint8_t pin_name);
+  float GetValue(uint8_t pin_name);
 
 private:
 

@@ -18,7 +18,7 @@
     @brief  AnalogIO hardware constructor
 */
 AnalogIOHardware::AnalogIOHardware() {
-
+  // no-op
 }
 
 /*!
@@ -26,3 +26,32 @@ AnalogIOHardware::AnalogIOHardware() {
 */
 AnalogIOHardware::~AnalogIOHardware() {}
 
+/*!
+    @brief  Configures an analog input pin.
+    @param  pin_name
+            The pin's numeric name.
+    @return True if the pin was configured.
+*/
+bool AnalogIOHardware::ConfigurePin(uint8_t pin_name) {
+  pinMode(pin_name, INPUT);
+  return true;
+}
+
+/*!
+    @brief  Deinitializes an analog input pin.
+    @param  pin_name
+            The pin to deinitialize.
+*/
+void AnalogIOHardware::deinit(uint8_t pin_name) {
+  pinMode(pin_name, INPUT);
+}
+
+/*!
+    @brief  Reads the current value of an analog pin.
+    @param  pin_name
+            The pin's numeric name.
+    @return The analog reading as a float.
+*/
+float AnalogIOHardware::GetValue(uint8_t pin_name) {
+  return (float)analogRead(pin_name);
+}
