@@ -87,9 +87,3 @@ src/Wippersnapper_demo.ino.cpp
 
 # Locally checked-out nested repos (not submodules)
 repos/
-
-# HIL test artifacts
-__pycache__/
-firmware/__pycache__/
-firmware/provisioning/__pycache__/
-tests_hil_board_utils/__pycache__/
