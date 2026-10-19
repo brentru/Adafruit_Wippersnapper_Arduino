@@ -1098,6 +1098,7 @@ void wippersnapper::connect() {
   NetworkFSM();
 #endif
   Ws->_wdt->feed();
+  WS_DEBUG_PRINTLN("Connected to Adafruit IO");
 
   // TODO: Possibly refactor checkin process into its own function
   // or component class for clarity
