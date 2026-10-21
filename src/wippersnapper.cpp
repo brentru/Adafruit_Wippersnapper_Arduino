@@ -351,9 +351,9 @@ bool routeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
     return Ws->error_handler->Router(stream);
   case ws_signal_BrokerToDevice_checkin_tag:
     return handleCheckinResponse(stream);
-  case ws_signal_BrokerToDevice_digitalio_tag:
+  case ws_signal_BrokerToDevice_digital_tag:
     return Ws->digital_io_controller->Router(stream);
-  case ws_signal_BrokerToDevice_analogin_tag:
+  case ws_signal_BrokerToDevice_analog_tag:
     return Ws->analog_controller->Router(stream);
   case ws_signal_BrokerToDevice_pixels_tag:
     return Ws->_pixels_controller->Router(stream);
@@ -395,6 +395,19 @@ bool routeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
 */
 void cbBrokerToDevice(char *data, uint16_t len) {
   WS_DEBUG_PRINTLN("=> New B2D message!");
+#if defined(WS_DEBUG) && (WS_DEBUG_PROTO == 1)
+  // Hex dump of the raw incoming payload
+  WS_PRINTER.print("[proto] B2D payload, len=");
+  WS_PRINTER.println(len);
+  for (uint16_t i = 0; i < len; i++) {
+    uint8_t b = (uint8_t)data[i];
+    if (b < 0x10) {
+      WS_PRINTER.print('0');
+    }
+    WS_PRINTER.print(b, HEX);
+  }
+  WS_PRINTER.println();
+#endif
   ws_signal_BrokerToDevice msg_signal = ws_signal_BrokerToDevice_init_default;
 
   // Configure the payload callback
@@ -820,13 +833,13 @@ bool wippersnapper::PublishD2b(pb_size_t which_payload, void *payload) {
     msg->which_payload = ws_signal_DeviceToBroker_checkin_tag;
     msg->payload.checkin = *(ws_checkin_D2B *)payload;
     break;
-  case ws_signal_DeviceToBroker_digitalio_tag:
-    msg->which_payload = ws_signal_DeviceToBroker_digitalio_tag;
-    msg->payload.digitalio = *(ws_digitalio_D2B *)payload;
+  case ws_signal_DeviceToBroker_digital_tag:
+    msg->which_payload = ws_signal_DeviceToBroker_digital_tag;
+    msg->payload.digital = *(ws_digital_D2B *)payload;
     break;
-  case ws_signal_DeviceToBroker_analogin_tag:
-    msg->which_payload = ws_signal_DeviceToBroker_analogin_tag;
-    msg->payload.analogin = *(ws_analogin_D2B *)payload;
+  case ws_signal_DeviceToBroker_analog_tag:
+    msg->which_payload = ws_signal_DeviceToBroker_analog_tag;
+    msg->payload.analog = *(ws_analog_D2B *)payload;
     break;
   case ws_signal_DeviceToBroker_ds18x20_tag:
     msg->which_payload = ws_signal_DeviceToBroker_ds18x20_tag;
@@ -874,6 +887,18 @@ bool wippersnapper::PublishD2b(pb_size_t which_payload, void *payload) {
     return false;
   }
 
+#if defined(WS_DEBUG) && (WS_DEBUG_PROTO == 1)
+  // Hex dump of the raw outgoing payload
+  WS_PRINTER.print("[proto] D2B payload, len=");
+  WS_PRINTER.println((unsigned)szMessageBuf);
+  for (size_t i = 0; i < szMessageBuf; i++) {
+    if (msgBuf[i] < 0x10) {
+      WS_PRINTER.print('0');
+    }
+    WS_PRINTER.print(msgBuf[i], HEX);
+  }
+  WS_PRINTER.println();
+#endif
   // Attempt to publish the signal message to the broker
   WS_DEBUG_PRINT("Publishing signal message to broker...");
   if (!Ws->_mqttV2->publish(Ws->_topicD2b, msgBuf, szMessageBuf, 1)) {

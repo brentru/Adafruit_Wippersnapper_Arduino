@@ -22,6 +22,12 @@
 // Debug Flags
 #define WS_DEBUG          /**< Define to enable debugging to serial terminal */
 #define WS_PRINTER Serial /**< Where debug messages will be printed */
+// Set WS_DEBUG_PROTO to 1 (e.g. -DWS_DEBUG_PROTO=1, requires WS_DEBUG) to
+// hex-dump the raw protobuf payload of every incoming BrokerToDevice message
+// and every outgoing DeviceToBroker message to the serial port.
+#ifndef WS_DEBUG_PROTO
+#define WS_DEBUG_PROTO 0 ///< 1 = hex-dump B2D/D2B payloads
+#endif
 
 // HIL CI (build-hil.yml) generates ws_hil_config.h, which defines WS_HIL_BUILD
 #if __has_include("ws_hil_config.h")
