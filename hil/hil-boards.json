@@ -1,0 +1,13 @@
+{
+  "board": "feather_esp32_v2",
+  "wippersnapper_boards_id": "feather-esp32-v2",
+  "chip": "esp32",
+  "flash_baud": 921600,
+  "read_baud": 115200,
+  "location": { "hub": "1-1.3", "port": 1 },
+  "firmware_dir": "/home/pi/firmware/feather_esp32_v2",
+  "api_tests": ["checkin/", "digital/"],
+  "system_tests": ["provisioning/", "network/", "mqtt/"],
+  "skip_tests": [],
+  "probe": { "type": "mcp23017", "address": "0x20", "pin_map": { "D14": "GPA0" } }
+}

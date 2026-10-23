@@ -218,12 +218,12 @@ void wippersnapper::set_ssid_pass() {
 
 /*!
 @brief   Performs a scan of local WiFi networks.
-@returns True if `_network_ssid` is found, False otherwise.
+@returns ws_ssid_scan_t result of the SSID scan.
 */
-bool wippersnapper::check_valid_ssid() {
+ws_ssid_scan_t wippersnapper::check_valid_ssid() {
   WS_DEBUG_PRINTLN("wippersnapper::check_valid_ssid");
   WS_DEBUG_PRINTLN("ERROR: Please define a network interface!");
-  return false;
+  return WS_SSID_SCAN_NO_IFACE;
 }
 
 /*!
@@ -304,8 +304,12 @@ bool handleCheckinResponse(pb_istream_t *stream) {
   // Decode the Checkin Response message
   WS_DEBUG_PRINTLN("[app] Decoding Checkin Response message");
   if (!Ws->CheckInModel->ProcessResponse(stream)) {
-    WS_DEBUG_PRINTLN("ERROR: Unable to decode Checkin Response message");
-    return false;
+    Ws->haltErrorV2("Unable to decode checkin response, rebooting soon...");
+  }
+
+  // Validate the broker's response code, halt and reboot if invalid
+  if (!Ws->CheckInModel->ValidateResponse()) {
+    Ws->haltErrorV2("Invalid checkin response, rebooting soon...");
   }
   Ws->NetworkFSM();
 
@@ -351,9 +355,9 @@ bool routeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
     return Ws->error_handler->Router(stream);
   case ws_signal_BrokerToDevice_checkin_tag:
     return handleCheckinResponse(stream);
-  case ws_signal_BrokerToDevice_digitalio_tag:
+  case ws_signal_BrokerToDevice_digital_tag:
     return Ws->digital_io_controller->Router(stream);
-  case ws_signal_BrokerToDevice_analogin_tag:
+  case ws_signal_BrokerToDevice_analog_tag:
     return Ws->analog_controller->Router(stream);
   case ws_signal_BrokerToDevice_pixels_tag:
     return Ws->_pixels_controller->Router(stream);
@@ -395,6 +399,19 @@ bool routeBrokerToDevice(pb_istream_t *stream, const pb_field_t *field,
 */
 void cbBrokerToDevice(char *data, uint16_t len) {
   WS_DEBUG_PRINTLN("=> New B2D message!");
+#if defined(WS_DEBUG) && (WS_DEBUG_PROTO == 1)
+  // Hex dump of the raw incoming payload
+  WS_PRINTER.print("[proto] B2D payload, len=");
+  WS_PRINTER.println(len);
+  for (uint16_t i = 0; i < len; i++) {
+    uint8_t b = (uint8_t)data[i];
+    if (b < 0x10) {
+      WS_PRINTER.print('0');
+    }
+    WS_PRINTER.print(b, HEX);
+  }
+  WS_PRINTER.println();
+#endif
   ws_signal_BrokerToDevice msg_signal = ws_signal_BrokerToDevice_init_default;
 
   // Configure the payload callback
@@ -466,6 +483,8 @@ bool wippersnapper::generateDeviceUID() {
 
   // Create the device identifier
   snprintf(_device_uidV2, lenDeviceUID, "%s%s", Ws->_boardIdV2, Ws->sUIDV2);
+  WS_DEBUG_PRINT("Device UID: io-wipper-");
+  WS_DEBUG_PRINTLN(_device_uidV2);
 
   return true;
 }
@@ -621,7 +640,19 @@ void wippersnapper::NetworkFSM(bool initial_connect) {
       // Perform a WiFi scan and check if SSID within
       // secrets.json is within the scanned SSIDs
       WS_DEBUG_PRINT("Performing a WiFi scan for SSID...");
-      if (!check_valid_ssid()) {
+      switch (check_valid_ssid()) {
+      case WS_SSID_SCAN_SSID_FOUND:
+        break;
+      case WS_SSID_SCAN_NO_NETWORKS:
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2350)
+        if (handle_sleep_mode_error) {
+          _sleep_controller->HandleNetFSMFailure();
+        }
+#endif
+        haltErrorV2("ERROR: No WiFi networks found, rebooting soon...",
+                    WS_LED_STATUS_WIFI_CONNECTING);
+        break;
+      case WS_SSID_SCAN_SSID_NOT_FOUND:
 #if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2350)
         if (handle_sleep_mode_error) {
           _sleep_controller->HandleNetFSMFailure();
@@ -629,6 +660,25 @@ void wippersnapper::NetworkFSM(bool initial_connect) {
 #endif
         haltErrorV2("ERROR: Unable to find WiFi network, rebooting soon...",
                     WS_LED_STATUS_WIFI_CONNECTING);
+        break;
+      case WS_SSID_SCAN_NO_IFACE:
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2350)
+        if (handle_sleep_mode_error) {
+          _sleep_controller->HandleNetFSMFailure();
+        }
+#endif
+        haltErrorV2("ERROR: No network interface defined, rebooting soon...",
+                    WS_LED_STATUS_WIFI_CONNECTING);
+        break;
+      default:
+#if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2350)
+        if (handle_sleep_mode_error) {
+          _sleep_controller->HandleNetFSMFailure();
+        }
+#endif
+        haltErrorV2("ERROR: Unknown WiFi scan result, rebooting soon...",
+                    WS_LED_STATUS_WIFI_CONNECTING);
+        break;
       }
       // Attempt to connect to wireless network
       maxAttempts = 5;
@@ -787,13 +837,13 @@ bool wippersnapper::PublishD2b(pb_size_t which_payload, void *payload) {
     msg->which_payload = ws_signal_DeviceToBroker_checkin_tag;
     msg->payload.checkin = *(ws_checkin_D2B *)payload;
     break;
-  case ws_signal_DeviceToBroker_digitalio_tag:
-    msg->which_payload = ws_signal_DeviceToBroker_digitalio_tag;
-    msg->payload.digitalio = *(ws_digitalio_D2B *)payload;
+  case ws_signal_DeviceToBroker_digital_tag:
+    msg->which_payload = ws_signal_DeviceToBroker_digital_tag;
+    msg->payload.digital = *(ws_digital_D2B *)payload;
     break;
-  case ws_signal_DeviceToBroker_analogin_tag:
-    msg->which_payload = ws_signal_DeviceToBroker_analogin_tag;
-    msg->payload.analogin = *(ws_analogin_D2B *)payload;
+  case ws_signal_DeviceToBroker_analog_tag:
+    msg->which_payload = ws_signal_DeviceToBroker_analog_tag;
+    msg->payload.analog = *(ws_analog_D2B *)payload;
     break;
   case ws_signal_DeviceToBroker_ds18x20_tag:
     msg->which_payload = ws_signal_DeviceToBroker_ds18x20_tag;
@@ -841,6 +891,18 @@ bool wippersnapper::PublishD2b(pb_size_t which_payload, void *payload) {
     return false;
   }
 
+#if defined(WS_DEBUG) && (WS_DEBUG_PROTO == 1)
+  // Hex dump of the raw outgoing payload
+  WS_PRINTER.print("[proto] D2B payload, len=");
+  WS_PRINTER.println((unsigned)szMessageBuf);
+  for (size_t i = 0; i < szMessageBuf; i++) {
+    if (msgBuf[i] < 0x10) {
+      WS_PRINTER.print('0');
+    }
+    WS_PRINTER.print(msgBuf[i], HEX);
+  }
+  WS_PRINTER.println();
+#endif
   // Attempt to publish the signal message to the broker
   WS_DEBUG_PRINT("Publishing signal message to broker...");
   if (!Ws->_mqttV2->publish(Ws->_topicD2b, msgBuf, szMessageBuf, 1)) {
@@ -991,6 +1053,8 @@ void wippersnapper::connect() {
   if (!generateDeviceUID()) {
     haltErrorV2("Unable to generate Device UID");
   }
+  WS_DEBUG_PRINT("Device UID: io-wipper-");
+  WS_DEBUG_PRINTLNVAR(_device_uidV2);
 
   // If we are running in offline mode, we skip the network setup
   // and MQTT connection process and jump to the offline device config process
@@ -1063,6 +1127,7 @@ void wippersnapper::connect() {
   NetworkFSM();
 #endif
   Ws->_wdt->feed();
+  WS_DEBUG_PRINTLN("Connected to Adafruit IO");
 
   // TODO: Possibly refactor checkin process into its own function
   // or component class for clarity
