@@ -113,9 +113,9 @@ public:
 
   /*!
   @brief   Performs a scan of local WiFi networks.
-  @returns True if `_network_ssid` is found, False otherwise.
+  @returns ws_ssid_scan_t result of the SSID scan.
   */
-  bool check_valid_ssid() {
+  ws_ssid_scan_t check_valid_ssid() {
     // Set WiFi to station mode and disconnect from an AP if it was previously
     // connected
     WiFi.mode(WIFI_STA);
@@ -126,7 +126,7 @@ public:
     int n = WiFi.scanNetworks();
     if (n == 0) {
       WS_DEBUG_PRINTLN("ERROR: No WiFi networks found!");
-      return false;
+      return WS_SSID_SCAN_NO_NETWORKS;
     }
 
     // Was the network within secrets.json found?
@@ -137,7 +137,7 @@ public:
         WS_DEBUG_PRINT(") found! RSSI: ");
         WS_DEBUG_PRINTLNVAR(WiFi.RSSI(i));
         WiFi.scanDelete(); // Free the scan result memory
-        return true;
+        return WS_SSID_SCAN_SSID_FOUND;
       }
       if (Ws->_isWiFiMultiV2) {
         // multi network mode
@@ -148,7 +148,7 @@ public:
             WS_DEBUG_PRINT(") found! RSSI: ");
             WS_DEBUG_PRINTLNVAR(WiFi.RSSI(i));
             WiFi.scanDelete(); // Free the scan result memory
-            return true;
+            return WS_SSID_SCAN_SSID_FOUND;
           }
         }
       }
@@ -156,6 +156,7 @@ public:
 
     // User-set network not found, print scan results to serial console
     WS_DEBUG_PRINTLN("ERROR: Your requested WiFi network was not found!");
+#ifndef WS_HIL_BUILD // HIL CI logs are public: don't leak nearby SSIDs
     WS_DEBUG_PRINTLN("WipperSnapper found these WiFi networks: ");
     for (int i = 0; i < n; ++i) {
       WS_DEBUG_PRINTVAR(WiFi.SSID(i));
@@ -163,10 +164,11 @@ public:
       WS_DEBUG_PRINTVAR(WiFi.RSSI(i));
       WS_DEBUG_PRINTLN("dB");
     }
+#endif
 
     WiFi.scanDelete(); // Free the scan result memory
 
-    return false;
+    return WS_SSID_SCAN_SSID_NOT_FOUND;
   }
 
   /*!

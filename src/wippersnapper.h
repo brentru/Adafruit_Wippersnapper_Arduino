@@ -22,6 +22,17 @@
 // Debug Flags
 #define WS_DEBUG          /**< Define to enable debugging to serial terminal */
 #define WS_PRINTER Serial /**< Where debug messages will be printed */
+// Set WS_DEBUG_PROTO to 1 (e.g. -DWS_DEBUG_PROTO=1, requires WS_DEBUG) to
+// hex-dump the raw protobuf payload of every incoming BrokerToDevice message
+// and every outgoing DeviceToBroker message to the serial port.
+#ifndef WS_DEBUG_PROTO
+#define WS_DEBUG_PROTO 0 ///< 1 = hex-dump B2D/D2B payloads
+#endif
+
+// HIL CI (build-hil.yml) generates ws_hil_config.h, which defines WS_HIL_BUILD
+#if __has_include("ws_hil_config.h")
+#include "ws_hil_config.h"
+#endif
 
 #define ONE_MINUTE_IN_MS 60000     ///< One minute expressed in milliseconds
 #define ONE_SECOND_IN_MS 1000      ///< One second expressed in milliseconds
@@ -224,7 +235,7 @@ public:
   virtual void set_user_key();
   virtual void set_ssid_pass(const char *ssid, const char *ssidPassword);
   virtual void set_ssid_pass();
-  virtual bool check_valid_ssid();
+  virtual ws_ssid_scan_t check_valid_ssid();
   virtual void _connect();
   virtual void _disconnect(bool wifi_off = true);
   void connect();
