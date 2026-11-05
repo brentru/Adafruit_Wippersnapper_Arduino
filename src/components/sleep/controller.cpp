@@ -14,6 +14,7 @@
  */
 #if defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_RP2350)
 #include "controller.h"
+#include "components/digital/hardware.h"
 
 /*!
     @brief  Sleep controller constructor
@@ -361,17 +362,18 @@ void SleepController::SetWakeEnablePin(uint8_t pin, uint8_t pull) {
 */
 bool SleepController::CheckWakeEnablePin() {
   // Configure pin with specified pull mode
-  switch (_wake_enable_pin_pull) {
-  case 1:
-    pinMode(_wake_enable_pin, INPUT_PULLDOWN);
-    break;
-  case 2:
-    pinMode(_wake_enable_pin, INPUT_PULLUP);
-    break;
-  default:
-    pinMode(_wake_enable_pin, INPUT);
-    break;
+  // Falls back to a floating input if the core can't set the requested pull
+  uint8_t mode = INPUT;
+  if (_wake_enable_pin_pull == 1 || _wake_enable_pin_pull == 2) {
+    ws_digital_Direction pull = (_wake_enable_pin_pull == 1)
+                                    ? ws_digital_Direction_D_INPUT_PULL_DOWN
+                                    : ws_digital_Direction_D_INPUT_PULL_UP;
+    if (!DigitalHardware::GetInputMode(pull, &mode)) {
+      WS_DEBUG_PRINTLN("[sleep] WARNING: Wake enable pin pull not supported "
+                       "on this platform, using INPUT");
+    }
   }
+  pinMode(_wake_enable_pin, mode);
   int pinState = digitalRead(_wake_enable_pin);
 
   // Return whether pin state indicates "active" based on pull mode
