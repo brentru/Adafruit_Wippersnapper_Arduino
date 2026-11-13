@@ -53,6 +53,23 @@ bool PWMController::Router(pb_istream_t *stream) {
   case ws_pwm_B2D_remove_tag:
     res = Handle_PWM_Remove(&b2d.payload.remove);
     break;
+  case ws_pwm_B2D_modify_tag: {
+    // Modify = Remove the old component, then Add the new one. Bail before
+    // removing anything if there is no Add to replace it with.
+    auto &m = b2d.payload.modify;
+    if (!m.has_add) {
+      Ws->error_handler->publishComponentError(
+          m.has_remove ? m.remove.pin : "",
+          "Modify requires an Add, nothing was removed");
+      res = false;
+      break;
+    }
+    if (m.has_remove) {
+      (void)Handle_PWM_Remove(&m.remove);
+    }
+    res = Handle_PWM_Add(&m.add);
+    break;
+  }
   case ws_pwm_B2D_write_tag:
     res = Handle_PWM_Write(&b2d.payload.write);
     break;
@@ -90,12 +107,22 @@ bool PWMController::Handle_PWM_Add(ws_pwm_Add *msg) {
   if (!did_attach) {
     Ws->error_handler->publishComponentError(msg->pin, "Failed to attach pin");
     delete new_pin;
-  } else {
-    _pins.push_back(new_pin);
+    return false;
   }
+  _pins.push_back(new_pin);
 
   WS_DEBUG_PRINT("[pwm] Attached pin: ");
   WS_DEBUG_PRINTVAR(msg->pin);
+
+  // Handle optional initial write
+  if (msg->has_write) {
+    WS_DEBUG_PRINTLN("[pwm] Processing initial write...");
+    if (!new_pin->write(&msg->write)) {
+      Ws->error_handler->publishComponentError(msg->pin,
+                                               "Failed to write to pin");
+      return false;
+    }
+  }
   return true;
 }
 
@@ -180,6 +207,18 @@ bool PWMController::Handle_PWM_Write(ws_pwm_Write *msg) {
                                              "Failed to write to pin");
     return false;
   }
+
+  WS_DEBUG_PRINT("[pwm] Wrote to pin: ");
+  WS_DEBUG_PRINTVAR(msg->pin);
+  WS_DEBUG_PRINT("[pwm] Message type: ");
+  WS_DEBUG_PRINTVAR(msg->which_payload);
+  WS_DEBUG_PRINT("[pwm] Payload value: ");
+  if (msg->which_payload == ws_pwm_Write_duty_cycle_tag) {
+    WS_DEBUG_PRINTVAR(msg->payload.duty_cycle);
+  } else if (msg->which_payload == ws_pwm_Write_frequency_tag) {
+    WS_DEBUG_PRINTVAR(msg->payload.frequency);
+  }
+  WS_DEBUG_PRINTLN("");
 
   return true;
 }

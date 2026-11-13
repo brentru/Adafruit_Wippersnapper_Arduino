@@ -1,0 +1,76 @@
+/*!
+ * @file src/components/digital/hardware.h
+ *
+ * Hardware for the digital.proto message.
+ *
+ * Adafruit invests time and resources providing this open source code,
+ * please support Adafruit and open-source hardware by purchasing
+ * products from Adafruit!
+ *
+ * Copyright (c) Brent Rubell 2026 for Adafruit Industries.
+ *
+ * BSD license, all text here must be included in any redistribution.
+ *
+ */
+#ifndef WS_DIGITAL_HARDWARE_H
+#define WS_DIGITAL_HARDWARE_H
+#include "wippersnapper.h"
+
+class ExpanderHardware;
+
+/*!
+    @brief  Represents a single digital pin and provides
+            hardware-level operations for reading, writing,
+            and polling its state.
+*/
+class DigitalHardware {
+public:
+  DigitalHardware(uint8_t pin_num, ws_digital_Direction direction,
+                  ws_digital_SampleMode sample_mode, bool initial_value,
+                  ulong period, ExpanderHardware *expander_drv,
+                  bool is_inverted = false);
+  ~DigitalHardware();
+
+  // Pin operations
+  void Write(bool value);
+  bool ReadValue();
+
+  // Polling
+  bool CheckEvent();
+  bool CheckTimer();
+
+  // Getters
+  uint8_t GetPinNum() const;
+  bool GetPinValue() const;
+  ws_digital_Direction GetDirection() const;
+  ws_digital_SampleMode GetSampleMode() const;
+  ExpanderHardware *GetExpanderDriver() const;
+
+  // Sleep cycle support
+  bool DidReadSend() const;
+  void MarkSent();
+  void ResetSendFlag();
+
+private:
+  bool SetMode();
+  uint8_t GetElectricalLevel(bool logical_value);
+  bool IsPinTimerExpired(ulong cur_time);
+  bool IsStatusLEDPin() const;
+
+  uint8_t _pin_num;
+  ws_digital_Direction _direction;
+  ws_digital_SampleMode _sample_mode;
+  bool _value;
+  bool _prv_value;
+  bool _first_read;  ///< True until CheckEvent() has read real hardware state.
+                     ///< _value/_prv_value are bools and can't encode "not yet
+                     ///< read" - until the first read they only hold the Add's
+                     ///< initial_value guess, which must not be compared
+                     ///< against as if it were an observed state.
+  bool _is_inverted; ///< True if the pin's logic is active-low (inverted)
+  ulong _period;
+  ulong _prv_time;
+  bool _did_read_send;
+  ExpanderHardware *_expander_drv;
+};
+#endif // WS_DIGITAL_HARDWARE_H

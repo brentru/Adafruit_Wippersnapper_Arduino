@@ -252,6 +252,15 @@
 #define USE_STATUS_NEOPIXEL
 #define STATUS_NEOPIXEL_PIN PIN_NEOPIXEL
 #define STATUS_NEOPIXEL_NUM 1
+#elif defined(ARDUINO_DFROBOT_FIREBEETLE_2_ESP32C5)
+#define BOARD_ID "dfrobot-firebeetle2-esp32c5" ///< Board ID
+#define USE_LITTLEFS               ///< Use LittleFS for provisioning
+#define USE_STATUS_LED             ///< Single-colour onboard LED
+#define STATUS_LED_PIN LED_BUILTIN ///< GPIO15/D13, shared with GDI LCD_BL
+#define BOOT_BUTTON 28             ///< BOOT button (GPIO28)
+#ifdef BOARD_HAS_PSRAM
+#define USE_PSRAM ///< Board has PSRAM, use it for dynamic memory allocation
+#endif
 #elif defined(ARDUINO_ADAFRUIT_QUALIA_S3_RGB666)
 #define BOARD_ID "qualia-s3-rgb666"
 #define USE_TINYUSB
@@ -265,8 +274,36 @@
 // The on-board ST7789 (170x320, 8-bit i8080 parallel) is fully described by
 // the ws.display.Add protobuf: data/cs/dc/rst/write/read via
 // I8080PinDescriptor, backlight via Add.backlight (BacklightConfig), and the
-// panel power-enable rail via Add.power (a prerequisite ws.digitalio.Add) —
+// panel power-enable rail via Add.power (a prerequisite ws.digital.Add) —
 // no board-hardcoded display pins here.
+#elif defined(WS_LILYGO_T_DONGLE_C5)
+#define BOARD_ID "lilygo-t-dongle-c5" ///< Board ID
+#define USE_LITTLEFS                  ///< Use LittleFS for provisioning
+#define USE_STATUS_DOTSTAR            ///< Onboard RGB LED is an APA102/DotStar
+#define STATUS_DOTSTAR_PIN_DATA 5     ///< DotStar Data Pin (LED_DI)
+#define STATUS_DOTSTAR_PIN_CLK 4      ///< DotStar Clock Pin (LED_CI)
+#define STATUS_DOTSTAR_NUM 1          ///< Number of DotStar LEDs
+#define STATUS_DOTSTAR_COLOR_ORDER DOTSTAR_BGR ///< DotStar Color Order
+#define BOOT_BUTTON 28                         ///< Normalized boot button pin
+#ifdef BOARD_HAS_PSRAM
+#define USE_PSRAM ///< Board has PSRAM, use it for dynamic memory allocation
+#endif
+#elif defined(ARDUINO_ESP32C5_DEV)
+// Fallback: the T-Dongle C5 has no boards.txt entry and builds with the
+// generic Espressif esp32c5 board, so ARDUINO_ESP32C5_DEV is not unique to it.
+// WS_LILYGO_T_DONGLE_C5 comes from boards.local.txt (Arduino) or build_flags
+// (PlatformIO); without it, it is currently the only ESP32-C5 board we support.
+#define BOARD_ID "lilygo-t-dongle-c5" ///< Board ID
+#define USE_LITTLEFS                  ///< Use LittleFS for provisioning
+#define USE_STATUS_DOTSTAR            ///< Onboard RGB LED is an APA102/DotStar
+#define STATUS_DOTSTAR_PIN_DATA 5     ///< DotStar Data Pin (LED_DI)
+#define STATUS_DOTSTAR_PIN_CLK 4      ///< DotStar Clock Pin (LED_CI)
+#define STATUS_DOTSTAR_NUM 1          ///< Number of DotStar LEDs
+#define STATUS_DOTSTAR_COLOR_ORDER DOTSTAR_BGR ///< DotStar Color Order
+#define BOOT_BUTTON 28                         ///< Normalized boot button pin
+#ifdef BOARD_HAS_PSRAM
+#define USE_PSRAM ///< Board has PSRAM, use it for dynamic memory allocation
+#endif
 #else
 #warning "Board type not identified within ws_boards.h!"
 #endif
