@@ -106,18 +106,21 @@ public:
 
   /*!
   @brief   Performs a scan of local WiFi networks.
-  @returns True if `_network_ssid` is found, False otherwise.
+  @note    nina-fw's scan never reports hidden networks, so a
+           missing `_ssid` is not treated as fatal.
+  @returns WS_SSID_SCAN_SSID_FOUND, a connection is always attempted.
   */
-  bool check_valid_ssid() {
+  ws_ssid_scan_t check_valid_ssid() {
     // Disconnect WiFi from an AP if it was previously connected
     WiFi.disconnect();
     delay(100);
 
     // Perform a network scan
     int n = WiFi.scanNetworks();
-    if (n == 0) {
-      WS_DEBUG_PRINTLN("ERROR: No WiFi networks found!");
-      return false;
+    if (n <= 0) {
+      WS_DEBUG_PRINTLN("WARNING: No visible WiFi networks found, the "
+                       "network may be hidden. Attempting to connect...");
+      return WS_SSID_SCAN_SSID_FOUND;
     }
 
     // Was the network within secrets.json found?
@@ -125,12 +128,12 @@ public:
       if (strcmp(_ssid, WiFi.SSID(i)) == 0) {
         WS_DEBUG_PRINT("SSID found! RSSI: ");
         WS_DEBUG_PRINTLNVAR(WiFi.RSSI(i));
-        return true;
+        return WS_SSID_SCAN_SSID_FOUND;
       }
     }
 
     // User-set network not found, print scan results to serial console
-    WS_DEBUG_PRINTLN("ERROR: Your requested WiFi network was not found!");
+#ifndef WS_HIL_BUILD // HIL CI logs are public: don't leak nearby SSIDs
     WS_DEBUG_PRINTLN("WipperSnapper found these WiFi networks: ");
     for (int i = 0; i < n; ++i) {
       WS_DEBUG_PRINTVAR(WiFi.SSID(i));
@@ -138,8 +141,12 @@ public:
       WS_DEBUG_PRINTVAR(WiFi.RSSI(i));
       WS_DEBUG_PRINTLN("dB");
     }
+#endif
 
-    return false;
+    // nina-fw can't scan for hidden networks, so try connecting anyway
+    WS_DEBUG_PRINTLN("WARNING: Your requested WiFi network was not found, "
+                     "it may be hidden. Attempting to connect...");
+    return WS_SSID_SCAN_SSID_FOUND;
   }
 
   /*!
